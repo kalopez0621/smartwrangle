@@ -1,0 +1,74 @@
+# ============================================================
+# SmartWrangle — Streamlit Configuration
+# ============================================================
+# This file controls Streamlit's behavior at the app level.
+# It lives at .streamlit/config.toml relative to the project root.
+#
+# Changes here take effect after restarting the app locally,
+# or on the next deploy on Streamlit Community Cloud.
+#
+# Full reference: https://docs.streamlit.io/develop/api-reference/configuration/config.toml
+# ============================================================
+
+
+# ── Theme ────────────────────────────────────────────────────
+# Controls the visual appearance of the app.
+# These settings apply globally to all Streamlit components.
+[theme]
+
+# Primary accent color used for buttons, sliders, and links.
+# #2563EB is a professional blue that matches the SmartWrangle
+# dashboard card and header color palette.
+primaryColor = "#2563EB"
+
+# Base color scheme: "light" or "dark"
+# "light" is recommended for portfolio and professional use —
+# most data tools and business dashboards use light backgrounds.
+base = "light"
+
+# Font family for all UI text.
+# "sans serif" maps to the system's default sans-serif font
+# (Inter on most platforms) which is clean and readable.
+font = "sans serif"
+
+
+# ── Server settings ───────────────────────────────────────────
+# Controls how the Streamlit server behaves.
+[server]
+
+# Maximum upload file size in megabytes.
+# The TSA claims dataset is 33.6 MB, so this is set to 200 MB
+# to support large real-world datasets without hitting the limit.
+# Streamlit Community Cloud's default is 200 MB — this makes
+# the local behavior match the deployed behavior.
+maxUploadSize = 200
+
+# Disable CORS checking for local development.
+# Set to false for production if you add authentication.
+enableCORS = false
+
+# Enable XSRF protection. Keep true for any public-facing app.
+enableXsrfProtection = true
+
+
+# ── Browser settings ─────────────────────────────────────────
+[browser]
+
+# Whether to collect anonymous usage statistics.
+# Set to false for privacy and to avoid unexpected network calls.
+gatherUsageStats = false
+
+
+# ── Runner settings ───────────────────────────────────────────
+[runner]
+
+# When true, Streamlit shows a warning if you use a magic command
+# (bare variable on a line) that writes to the UI unintentionally.
+# Useful during development to catch accidental output.
+magicEnabled = true
+
+# Suppress the deprecation warning about using width="stretch"
+# vs use_container_width=True. Set to true during the transition
+# period while remaining files are updated, then remove this line
+# once all files use use_container_width=True.
+# fastRerenderEnabled = true  # Uncomment if on Streamlit >= 1.35

@@ -1,0 +1,75 @@
+# ============================================================
+# SmartWrangle — Python Requirements
+# ============================================================
+# This file tells Streamlit Community Cloud (and any other
+# deployment platform) which packages to install when
+# launching the app.
+#
+# HOW TO USE:
+#   Install locally:  pip install -r requirements.txt
+#   Deploy:           Push to GitHub → connect to Streamlit
+#                     Community Cloud → it reads this file
+#                     automatically on every deploy.
+#
+# HOW TO UPDATE:
+#   Add a new package name below, commit, and push.
+#   Streamlit Community Cloud will reinstall on next deploy.
+#
+# VERSION PINNING:
+#   Versions are pinned with >= to allow compatible upgrades
+#   while preventing breaking changes from major version jumps.
+#   If you encounter a bug after a package update, pin the
+#   exact version with == (e.g. pandas==2.1.4) to freeze it.
+# ============================================================
+
+
+# ── Core app framework ──────────────────────────────────────
+# Streamlit powers the entire UI, tab structure, widgets,
+# session state, and file upload system.
+streamlit>=1.30.0
+
+
+# ── Data manipulation ────────────────────────────────────────
+# pandas is the foundation for all data loading, cleaning,
+# transformations, and quality scoring.
+pandas>=2.0.0
+
+# numpy is used for numeric operations, IQR calculations,
+# correlation matrix manipulation, and dtype detection.
+numpy>=1.24.0
+
+# openpyxl is required for pd.read_excel() to work.
+# Without it, uploading .xlsx files will raise an error
+# even though pandas is installed — a very common gotcha.
+openpyxl>=3.1.0
+
+
+# ── Visualization ────────────────────────────────────────────
+# plotly generates all interactive charts: bar, scatter,
+# line, histogram, heatmap, and box plots.
+plotly>=5.18.0
+
+
+# ── Machine learning / preprocessing ─────────────────────────
+# scikit-learn provides StandardScaler and MinMaxScaler
+# used in the Transformations tab.
+scikit-learn>=1.3.0
+
+
+# ── Statistical analysis ──────────────────────────────────────
+# statsmodels is used for VIF (Variance Inflation Factor)
+# in the Health & Insights tab.
+#
+# This package is OPTIONAL — health.py is written to detect
+# whether it is installed and shows a friendly message if not.
+# However, including it here enables full VIF functionality
+# on Streamlit Community Cloud and any fresh environment.
+statsmodels>=0.14.0
+
+
+# ── Arrow serialization ───────────────────────────────────────
+# pyarrow is Streamlit's internal serialization engine for
+# displaying DataFrames. Streamlit installs it automatically,
+# but listing it here pins the version to avoid compatibility
+# issues between pyarrow and pandas on deployment.
+pyarrow>=14.0.0
