@@ -234,15 +234,77 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
     # ── Remove duplicates ──────────────────────────────────────────────────────
     with st.expander("🗑 Remove Duplicate Rows"):
         st.caption(
-            "Removes rows that are exact copies of another row. "
+            "Preview the duplicate rows first, then decide whether to remove them. "
             "Keeps the first occurrence of each duplicate."
         )
-        n_dups = df.duplicated().sum()
+
+        # Count exact duplicates — rows where every column value is identical
+        n_dups = int(df.duplicated().sum())
+
         if n_dups == 0:
             st.success("No duplicate rows found.")
+
         else:
-            st.warning(f"{n_dups:,} duplicate rows found.")
-            if st.button("Remove duplicates", key="clean_dups"):
+            # ── Summary line ───────────────────────────────────────────────────
+            st.warning(
+                f"{n_dups:,} duplicate row(s) found out of {len(df):,} total rows "
+                f"({n_dups / len(df) * 100:.1f}%)."
+            )
+
+            # ── Preview section ────────────────────────────────────────────────
+            # df.duplicated(keep=False) marks EVERY copy as True — both the
+            # original row AND the duplicate. This means the preview shows
+            # pairs of identical rows side-by-side, so you can visually
+            # confirm they are genuinely the same record before removing anything.
+            #
+            # We then sort by all columns so identical rows appear adjacent —
+            # Alice row 0 and Alice row 2 will be next to each other, not
+            # scattered through the table.
+            #
+            # The 'Original Row #' column shows the row's position in the
+            # full dataset, so you can trace any row back to its source.
+
+            MAX_PREVIEW = 50   # cap preview to avoid flooding the UI
+
+            dup_all = df[df.duplicated(keep=False)].copy()
+
+            # Sort by all columns → identical rows become adjacent
+            dup_preview = (
+                dup_all
+                .sort_values(by=df.columns.tolist())
+                .reset_index()
+                .rename(columns={"index": "Original Row #"})
+            )
+
+            # If there are more than MAX_PREVIEW rows, only show the first 50
+            showing_all = len(dup_preview) <= MAX_PREVIEW
+            preview_df  = dup_preview.head(MAX_PREVIEW)
+
+            st.markdown("**Preview — identical rows are grouped together:**")
+            st.caption(
+                f"Showing {len(preview_df):,} of {len(dup_preview):,} rows "
+                f"involved in duplicates. "
+                f"{'All duplicates shown.' if showing_all else f'First {MAX_PREVIEW} shown — remove to see the rest.'}"
+            )
+
+            # Display the preview table
+            # use_container_width makes it fill the available space
+            st.dataframe(preview_df, use_container_width=True, hide_index=True)
+
+            st.markdown(
+                "_The rows above are grouped in pairs (or larger groups). "
+                "Each group contains identical records. "
+                "The first occurrence in each group will be **kept** — "
+                "all others will be **removed**._"
+            )
+
+            # ── Remove button ──────────────────────────────────────────────────
+            st.markdown("---")
+            if st.button(
+                f"Remove {n_dups:,} duplicate row(s)",
+                key="clean_dups",
+                type="primary"
+            ):
                 new_df, msg = remove_duplicates(df)
                 _apply_action(new_df, msg)
 
