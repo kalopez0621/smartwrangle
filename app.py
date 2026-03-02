@@ -70,9 +70,9 @@ from utils.sanitizer import sanitize_column_names
 # layout="wide" uses the full browser width instead of a narrow center column.
 st.set_page_config(
     page_title="SmartWrangle 2.0",
-    page_icon="🔷",
+    page_icon="🔧",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="expanded",   # sidebar open by default
 )
 
 
@@ -155,54 +155,14 @@ st.markdown("""
 
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: #0f172a;
+        background: #1e293b;
     }
-
-    /* Target only text we control — headings, labels, buttons.
-       We removed the wildcard * selector because it was overriding
-       Streamlit's internal file uploader text, making "Drag and drop
-       file here" and "Limit 200MB per file" unreadable on the dark bg. */
-    [data-testid="stSidebar"] h1,
-    [data-testid="stSidebar"] h2,
-    [data-testid="stSidebar"] h3,
-    [data-testid="stSidebar"] h4,
-    [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] .stButton button,
-    [data-testid="stSidebar"] [data-testid="stMetricValue"],
-    [data-testid="stSidebar"] [data-testid="stMetricLabel"] {
+    [data-testid="stSidebar"] * {
         color: #e2e8f0 !important;
     }
-
-    /* Markdown paragraphs and bold text */
-    [data-testid="stSidebar"] .stMarkdown p,
-    [data-testid="stSidebar"] .stMarkdown strong {
-        color: #cbd5e1 !important;
-        font-size: 13px;
-    }
-
-    /* Caption / small text */
-    [data-testid="stSidebar"] small,
-    [data-testid="stSidebar"] .stCaption {
+    [data-testid="stSidebar"] .stMarkdown p {
         color: #94a3b8 !important;
-    }
-
-    /* File uploader box — white background so text is always legible */
-    [data-testid="stSidebar"] [data-testid="stFileUploader"] {
-        background: ##1e293b;
-        border: 1px solid #334155;
-        border-radius: 10px;
-        padding: 4px;
-    }
-
-    /* "Upload your dataset" label sits ABOVE the white uploader box,
-       against the dark sidebar — needs an explicit bright color rule.
-       Streamlit renders widget labels as a <p> inside stWidgetLabel. */
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] label,
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] {
-        color: #f1f5f9 !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
+        font-size: 13px;
     }
 
     /* Make section headers stand out */
@@ -230,20 +190,8 @@ st.markdown("""
 with st.sidebar:
 
     # App name and tagline
-    st.markdown("""
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;">
-        <svg width="32" height="32" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="88" height="88" rx="22" fill="#1e3a5f"/>
-          <ellipse cx="42" cy="44" rx="32" ry="26" fill="#3b82f6" opacity="0.08"/>
-          <path d="M11 27 C11 19 17 14 26 14 L42 14 C52 14 57 20 57 28 C57 36 51 40 42 40 L26 40 C18 40 13 45 13 52 C13 60 19 65 28 65 L45 65 C55 65 60 59 60 51"
-                stroke="#60a5fa" stroke-width="6.5" stroke-linecap="round" fill="none"/>
-          <path d="M57 16 L63 54 L70 33 L77 54 L83 16"
-                stroke="#93c5fd" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        </svg>
-        <span style="font-size:20px; font-weight:800; color:#f1f5f9; letter-spacing:-0.5px;">SmartWrangle</span>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b; font-size:12px; margin-top:0; margin-bottom:0;'>AI-powered data wrangling</p>", unsafe_allow_html=True)
+    st.markdown("## 🔧 SmartWrangle")
+    st.markdown("*AI-powered data wrangling*")
     st.markdown("---")
 
     # ── File uploader ──────────────────────────────────────────────────────────
@@ -382,6 +330,15 @@ if uploaded_file is not None:
                     if key in st.session_state:
                         del st.session_state[key]
 
+                # ── Force a clean rerender ─────────────────────────────────────
+                # Streamlit renders the sidebar BEFORE the file loading block
+                # runs, so after loading a new file the sidebar still shows the
+                # previous dataset's name, row count, and quality score.
+                # Calling st.rerun() immediately after loading triggers a fresh
+                # top-to-bottom render where sidebar and main content both read
+                # from the newly-updated session state at the same time.
+                st.rerun()
+
             except Exception as e:
                 # If loading fails, show a helpful error message
                 st.error(
@@ -405,23 +362,7 @@ if "working_df" not in st.session_state:
         text-align: center;
         padding: 0 24px;
     ">
-        <div style="margin-bottom: 24px; display: flex; justify-content: center;">
-            <svg width="96" height="96" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <!-- Rounded square background -->
-              <rect width="88" height="88" rx="22" fill="#1e293b"/>
-              <!-- Subtle inner glow -->
-              <ellipse cx="42" cy="44" rx="32" ry="26" fill="#3b82f6" opacity="0.06"/>
-              <!-- S letterform — bold, left side, blue-500 -->
-              <path d="M11 27 C11 19 17 14 26 14 L42 14 C52 14 57 20 57 28
-                       C57 36 51 40 42 40 L26 40 C18 40 13 45 13 52
-                       C13 60 19 65 28 65 L45 65 C55 65 60 59 60 51"
-                    stroke="#3b82f6" stroke-width="6.5" stroke-linecap="round" fill="none"/>
-              <!-- W letterform — slightly lighter, right side, blue-400 -->
-              <path d="M57 16 L63 54 L70 33 L77 54 L83 16"
-                    stroke="#60a5fa" stroke-width="5.5" stroke-linecap="round"
-                    stroke-linejoin="round" fill="none"/>
-            </svg>
-        </div>
+        <div style="font-size: 56px; margin-bottom: 16px;">🔧</div>
         <h1 style="
             font-size: 42px;
             font-weight: 800;
