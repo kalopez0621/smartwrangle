@@ -59,6 +59,7 @@ from engine.detector import detect_column_types
 from tabs.understand   import render_understand_tab
 from tabs.discover     import render_discover_tab
 from tabs.clean_export import render_clean_export_tab
+from tabs.analyst import render_analyst_tab
 
 # Utility modules
 from utils.sanitizer import sanitize_column_names
@@ -524,10 +525,11 @@ else:
     # ── Three-tab interface (file is loaded) ───────────────────────────────────
     # st.tabs() creates the clickable tab bar at the top of the page.
     # Each "with tab:" block only renders when that tab is active.
-    tab1, tab2, tab3 = st.tabs([
-        "📋  Understand",
-        "📊  Discover",
-        "⚙  Clean & Export",
+    tab1, tab2, tab3, tab4 = st.tabs([
+    "📋  Understand",
+    "📊  Discover",
+    "⚙  Clean & Export",
+    "🤖  AI Analyst",
     ])
 
     with tab1:
@@ -541,6 +543,10 @@ else:
     with tab3:
         # Tab 3: Fix and download.
         render_clean_export_tab()
+
+    with tab4:
+        # Tab 4: Ask questions in plain English.
+        render_analyst_tab()
 
 
 # ── END OF FILE ────────────────────────────────────────────────────────────────
