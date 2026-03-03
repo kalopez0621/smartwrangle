@@ -682,8 +682,8 @@ def render_clean_export_tab():
         st.caption("No actions taken yet. Your data is in its original state.")
     else:
         st.caption(f"{len(cleaning_log)} action(s) completed:")
-        for i, action in enumerate(reversed(cleaning_log), 1):
-            st.markdown(f"  {len(cleaning_log) - i + 1}. {action}")
+        for i, action in enumerate(cleaning_log, 1):
+            st.markdown(f"  {i}. {action}")
 
     st.markdown("---")
 
