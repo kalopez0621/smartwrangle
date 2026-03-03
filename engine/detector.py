@@ -224,7 +224,12 @@ def generate_column_recommendations(
                 rec_text = "High uniqueness suggests this is an identifier. Consider excluding from analysis."
 
             elif detected == "financial" and expected == "metric":
-                rec_text = "Column appears numeric but may not represent monetary values."
+                # Guard: if the column name contains financial keywords,
+                # the detection is correct. Do not flag it.
+                col_name_lower = col.lower()
+                name_is_financial = any(kw in col_name_lower for kw in FINANCIAL_KEYWORDS)
+                if not name_is_financial:
+                    rec_text = "Column appears numeric but may not represent monetary values."
 
         missing_pct = df[col].isnull().mean() * 100
         if missing_pct >= 30:

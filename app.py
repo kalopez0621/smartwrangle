@@ -347,6 +347,18 @@ if uploaded_file is not None:
                 # This prevents subtle bugs where " Amount" != "Amount".
                 raw_df = sanitize_column_names(raw_df)
 
+                # ── Remove string 'None' artifact ─────────────────────────────
+                # A previous bug allowed users to type 'None' as a constant
+                # fill value for date columns. This left the 4-character string
+                # 'None' stored as a category in those columns. This sanitizer
+                # removes that artifact on every file load before anything else
+                # in the app reads the data.
+                # We only check object (text) columns — numeric and datetime
+                # columns are never affected.
+                for _col in raw_df.select_dtypes(include="object").columns:
+                    if (raw_df[_col] == "None").any():
+                        raw_df[_col] = raw_df[_col].replace("None", pd.NA)
+
                 # ── Store original (never to be modified) ──────────────────────
                 # original_df is kept for the "Reset to original" feature
                 # and for the export summary to show the starting state.
