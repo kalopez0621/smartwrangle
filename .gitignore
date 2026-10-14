@@ -2,3 +2,6 @@
 __pycache__/
 *.pyc
 .env
+
+# Local Python environment: rebuilt with pip, never uploaded
+venv/

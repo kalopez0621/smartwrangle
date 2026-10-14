@@ -23,6 +23,12 @@ focused answers because the model only gets relevant context.
 import streamlit as st
 import anthropic
 
+# ── AI model setting ─────────────────────────────────────────────
+# The Claude model the AI Analyst uses. Keep it in ONE place so the
+# next model change is a one-line edit.
+# claude-haiku-4-5-20251001 may be retired as early as Oct 15, 2026.
+# claude-haiku-5-5 replaces it and costs about 10x less per question.
+CLAUDE_MODEL = "claude-haiku-5-5"
 
 # ── Context builder ────────────────────────────────────────────────────────────
 
@@ -194,7 +200,7 @@ def render_analyst_tab():
             if st.button(
                 question,
                 key=f"suggestion_{i}",
-                use_container_width=True
+                width="stretch"
             ):
                 # Clicking a suggestion populates it as the user's question
                 st.session_state.analyst_prefill = question
@@ -249,14 +255,22 @@ def render_analyst_tab():
                     client = anthropic.Anthropic(api_key=api_key)
 
                     response = client.messages.create(
-                        model="claude-haiku-4-5-20251001",
+                        model=CLAUDE_MODEL,   # set at the top of this file
                         max_tokens=1024,
                         system=system_prompt,
                         messages=st.session_state.analyst_history
                     )
 
                     # Extract the text response
-                    answer = response.content[0].text
+                    # Newer models can return several content blocks
+                    # (for example a "thinking" block before the text).
+                    # Keep only the text blocks and join them together,
+                    # instead of assuming the first block is the answer.
+                    answer = "".join(
+                        block.text
+                        for block in response.content
+                        if block.type == "text"
+                    )
 
                     # Display the answer
                     st.markdown(answer)
