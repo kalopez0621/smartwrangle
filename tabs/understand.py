@@ -296,7 +296,7 @@ def render_understand_tab():
     # Always sanitize before displaying — prevents Arrow serialization errors
     st.dataframe(
         sanitize_for_display(df.head(10)),
-        use_container_width=True
+        width="stretch",
     )
 
     # ── SECTION 6: Advanced Details (collapsed by default) ────────────────────
@@ -318,7 +318,7 @@ def render_understand_tab():
             # Color the Status column for quick visual scanning
             st.dataframe(
                 sanitize_for_display(health_table),
-                use_container_width=True
+                width="stretch"
             )
 
         # Show the full column type inventory as a table for technical users
@@ -332,7 +332,7 @@ def render_understand_tab():
             }
             for col in df.columns
         ])
-        st.dataframe(sanitize_for_display(col_inventory), use_container_width=True)
+        st.dataframe(sanitize_for_display(col_inventory), width="stretch")
 
 
 # ── END OF FILE ────────────────────────────────────────────────────────────────

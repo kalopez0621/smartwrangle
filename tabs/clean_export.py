@@ -76,7 +76,7 @@ def _show_undo_bar():
         if st.button(
             "↩ Undo Last Action",
             disabled=undo_disabled,
-            use_container_width=True,
+            width="stretch",
             type="secondary",
             key="undo_btn"
         ):
@@ -194,7 +194,7 @@ def _render_suggested_actions(df: pd.DataFrame, col_types: dict):
             # Each button needs a unique key — we use the operation + index
             btn_key = f"suggest_{s['operation']}_{i}"
 
-            if st.button(s["action"], key=btn_key, use_container_width=True):
+            if st.button(s["action"], key=btn_key, width="stretch"):
                 # Execute the suggested operation
                 op  = s["operation"]
                 col = s.get("column")
@@ -288,8 +288,8 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             )
 
             # Display the preview table
-            # use_container_width makes it fill the available space
-            st.dataframe(preview_df, use_container_width=True, hide_index=True)
+            # width makes it fill the available space
+            st.dataframe(preview_df, width="stretch", hide_index=True)
 
             st.markdown(
                 "_The rows above are grouped in pairs (or larger groups). "
@@ -720,7 +720,7 @@ def render_clean_export_tab():
             data=csv_bytes,
             file_name=csv_filename,
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             type="primary",
         )
 
@@ -750,7 +750,7 @@ def render_clean_export_tab():
             data=report_bytes,
             file_name=report_filename,
             mime="text/plain",
-            use_container_width=True,
+            width="stretch",
         )
 
     # ── Report preview ─────────────────────────────────────────────────────────

@@ -131,7 +131,7 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
                 margin=dict(t=10, b=40),
             )
 
-            st.plotly_chart(fig, use_container_width=True, key=f"line_{index}")
+            st.plotly_chart(fig, width="stretch", key=f"line_{index}")
 
     # ── Bar chart (segment, outcome, high_cardinality_segment) ─────────────────
     elif chart_type == "bar" and isinstance(data, pd.DataFrame):
@@ -180,7 +180,7 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
             yaxis_title="",
         )
 
-        st.plotly_chart(fig, use_container_width=True, key=f"bar_{index}")
+        st.plotly_chart(fig, width="stretch", key=f"bar_{index}")
 
     # ── Histogram (financial columns) ─────────────────────────────────────────
     elif chart_type == "histogram":
@@ -237,7 +237,7 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
             bargap=0.05,
             margin=dict(t=10, b=40),
         )
-        st.plotly_chart(fig, use_container_width=True, key=f"hist_{index}")
+        st.plotly_chart(fig, width="stretch", key=f"hist_{index}")
 
 
 def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
@@ -305,7 +305,7 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
                     color=y_col, color_continuous_scale="Blues"
                 )
             fig.update_layout(coloraxis_showscale=False, plot_bgcolor="white")
-            st.plotly_chart(fig, use_container_width=True, key="explorer_bar")
+            st.plotly_chart(fig, width="stretch", key="explorer_bar")
 
     # ── Scatter chart builder ──────────────────────────────────────────────────
     elif chart_choice.startswith("Scatter"):
@@ -328,7 +328,7 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
                 title=f"{y_col} vs {x_col}",
             )
             fig.update_layout(plot_bgcolor="white")
-            st.plotly_chart(fig, use_container_width=True, key="explorer_scatter")
+            st.plotly_chart(fig, width="stretch", key="explorer_scatter")
             st.caption("Showing up to 5,000 random points for performance.")
 
     # ── Histogram builder ──────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
                 title=f"Distribution of {x_col}"
             )
             fig.update_layout(plot_bgcolor="white", bargap=0.05)
-            st.plotly_chart(fig, use_container_width=True, key="explorer_hist")
+            st.plotly_chart(fig, width="stretch", key="explorer_hist")
 
     # ── Line chart builder ─────────────────────────────────────────────────────
     elif chart_choice.startswith("Line"):
@@ -378,7 +378,7 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
                     title=f"Monthly average {y_col} over time"
                 )
                 fig.update_layout(plot_bgcolor="white")
-                st.plotly_chart(fig, use_container_width=True, key="explorer_line")
+                st.plotly_chart(fig, width="stretch", key="explorer_line")
 
 
 def render_discover_tab():

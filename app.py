@@ -283,7 +283,7 @@ with st.sidebar:
         st.markdown("---")
 
         # Reset button — lets the user upload a different file
-        if st.button("Upload a different file", use_container_width=True):
+        if st.button("Upload a different file", width='stretch'):
             # Clear all session state keys related to the current dataset
             keys_to_clear = [
                 "original_df", "working_df", "col_types",
