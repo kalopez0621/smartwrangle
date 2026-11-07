@@ -1,0 +1,209 @@
+Order ID,Order Date,Customer,Region, Product ,Amount,Quantity,Unit Price,Rating,Notes,Store
+ORD-1000,01/01/2024,  Maria Lopez,East,Desk Chair,$329.30,3,,3.0,call first,Main Street
+ORD-1001,2024-01-03,Ana Diaz,SOUTH,Mouse,$340.52,9,,1.0,,Main Street
+ORD-1002,2024-01-05,JOHN SMITH,East,Monitor,"$1,094.88",8,80.17,1.0,none,Main Street
+ORD-1003,2024-01-07,John Smith  ,north ,Desk Chair,$344.80,10,83.73,4.0,,Main Street
+ORD-1004,2024-01-09,John Smith  ,East,Keyboard,$519.69,3,80.66,5.0,  gift wrap ,Main Street
+ORD-1005,not a date,ana diaz ,,Keyboard,$67.98,9,76.96,,call first,Main Street
+ORD-1006,2024-01-13,  Maria Lopez,north ,Keyboard,"$1,259.78",6,63.76,3.0,rush order,Main Street
+ORD-1007,01/15/2024,Ana Diaz,SOUTH,Laptop,$762.27,3,77.73,1.0,rush order,Main Street
+ORD-1008,2024-01-17,maria lopez,South,Desk Chair,$397.19,2,68.81,5.0,  gift wrap ,Main Street
+ORD-1009,,  Maria Lopez,north ,Laptop,$317.77,7,61.25,,none,Main Street
+ORD-1010,2024-01-21,JOHN SMITH,South,Laptop,$634.43,4,87.67,2.0,rush order,Main Street
+ORD-1011,2024-01-23,ana diaz ,north ,Monitor,"($1,250.00)",2,85.87,5.0,call first,Main Street
+ORD-1012,2024-01-25,Ana Diaz,north ,Monitor,"$1,271.00",5,,4.0,  gift wrap ,Main Street
+ORD-1013,2024-01-27,Ana Diaz,East,Laptop,$745.10,8,78.16,4.0,,Main Street
+ORD-1014,01/29/2024,Ana Diaz,north ,Laptop,,4,94.94,2.0,call first,Main Street
+ORD-1015,2024-01-31,Ana Diaz,South,Mouse,$824.61,11,95.89,5.0,none,Main Street
+ORD-1016,2024-02-02,JOHN SMITH,North,Desk Chair,$723.61,9,95.39,3.0,  gift wrap ,Main Street
+ORD-1017,13/45/2024,  Maria Lopez,North,Laptop,$439.80,6,80.58,3.0,,Main Street
+ORD-1018,2024-02-06,ana diaz ,East,Monitor,$709.03,11,,,,Main Street
+ORD-1019,2024-02-08,John Smith  ,SOUTH,Keyboard,$699.82,5,63.74,,  gift wrap ,Main Street
+ORD-1020,2024-02-10,JOHN SMITH,North,Desk Chair,$395.43,2,85.17,,  gift wrap ,Main Street
+ORD-1021,02/12/2024,John Smith  ,East,Mouse,$270.78,seven,85.69,,  gift wrap ,Main Street
+ORD-1022,2024-02-14,maria lopez,north ,Mouse,$658.16,11,99.31,2.0,rush order,Main Street
+ORD-1023,2024-02-16,ana diaz ,South,Keyboard,$167.65,11,,,  gift wrap ,Main Street
+ORD-1024,2024-02-18,Ana Diaz,north ,Keyboard,$134.44,9,78.02,4.0,rush order,Main Street
+ORD-1025,2024-02-20,JOHN SMITH,South,Laptop,$525.70,,61.34,2.0,call first,Main Street
+ORD-1026,2024-02-22,John Smith  ,north ,Desk Chair,$645.64,4,75.21,4.0,call first,Main Street
+ORD-1027,2024-02-24,Ana Diaz,West,Desk Chair,$522.82,1,83.26,4.0,call first,Main Street
+ORD-1028,02/26/2024,JOHN SMITH,West,Laptop,$565.03,1,,,,Main Street
+ORD-1029,2024-02-28,John Smith  ,South,Mouse,$637.96,3,71.33,,none,Main Street
+ORD-1030,2024-03-01,John Smith  ,East,Laptop,"$1,097.62",7,83.79,5.0,,Main Street
+ORD-1031,2024-03-03,maria lopez,SOUTH,Mouse,$753.98,1,72.44,3.0,none,Main Street
+ORD-1032,2024-03-05,  Maria Lopez,North,Desk Chair,$738.36,11,70.58,1.0,,Main Street
+ORD-1033,2024-02-30,JOHN SMITH,north ,Laptop,$496.44,6,,4.0,  gift wrap ,Main Street
+ORD-1034,2024-03-09,ana diaz ,East,Keyboard,$510.15,3,73.97,3.0,,Main Street
+ORD-1035,03/11/2024,  Maria Lopez,north ,Laptop,$370.84,6,83.66,3.0,,Main Street
+ORD-1036,2024-03-13,ana diaz ,West,Keyboard,$553.06,9,84.1,,call first,Main Street
+ORD-1037,2024-03-15,Ana Diaz,East,Desk Chair,$159.89,4,62.91,5.0,call first,Main Street
+ORD-1038,2024-03-17,maria lopez,South,Laptop,"$1,101.02",1,72.78,,,Main Street
+ORD-1039,2024-03-19,JOHN SMITH,West,Monitor,$203.64,1,101.57,3.0,none,Main Street
+ORD-1040,2024-03-21,  Maria Lopez,North,Desk Chair,$752.92,10,,1.0,rush order,Main Street
+ORD-1041,2024-03-23,Ana Diaz,West,Monitor,"$1,009.60",2,48.25,,rush order,Main Street
+ORD-1042,03/25/2024,Ana Diaz,North,Laptop,$751.70,7,52.07,3.0,rush order,Main Street
+ORD-1043,2024-03-27,John Smith  ,West,Keyboard,"$1,709.86",5,80.44,2.0,  gift wrap ,Main Street
+ORD-1044,2024-03-29,  Maria Lopez,West,Keyboard,$46.86,9,80.46,4.0,,Main Street
+ORD-1045,2024-03-31,ana diaz ,North,Mouse,$285.71,1,78.24,,  gift wrap ,Main Street
+ORD-1046,2024-04-02,John Smith  ,north ,Monitor,$998.34,10,98.21,3.0,rush order,Main Street
+ORD-1047,2024-04-04,ana diaz ,East,Desk Chair,$129.19,8,39.91,3.0,,Main Street
+ORD-1048,yesterday,Ana Diaz,north ,Keyboard,$209.32,5,85.94,2.0,rush order,Main Street
+ORD-1049,04/08/2024,Ana Diaz,North,Monitor,$609.78,3,103.42,1.0,call first,Main Street
+ORD-1050,2024-04-10,Ana Diaz,South,Desk Chair,$434.46,11,63.08,5.0,call first,Main Street
+ORD-1051,2024-04-12,maria lopez,,Desk Chair,$583.21,4,74.3,1.0,rush order,Main Street
+ORD-1052,2024-04-14,John Smith  ,South,Keyboard,$462.90,6,68.71,,rush order,Main Street
+ORD-1053,2024-04-16,John Smith  ,South,Laptop,$495.11,5,66.58,4.0,call first,Main Street
+ORD-1054,2024-04-18,John Smith  ,West,Keyboard,$228.11,3,75.11,1.0,call first,Main Street
+ORD-1055,2024-04-20,  Maria Lopez,North,Keyboard,$483.46,5,101.41,4.0,none,Main Street
+ORD-1056,04/22/2024,JOHN SMITH,,Laptop,$302.07,2,,4.0,none,Main Street
+ORD-1057,2024-04-24,  Maria Lopez,North,Mouse,$336.62,1,74.96,,none,Main Street
+ORD-1058,2024-04-26,Ana Diaz,South,Desk Chair,$745.83,4,108.58,,none,Main Street
+ORD-1059,2024-04-28,Ana Diaz,West,Laptop,$122.67,2,80.53,1.0,  gift wrap ,Main Street
+ORD-1060,,ana diaz ,north ,Mouse,$26.16,5,106.31,,rush order,Main Street
+ORD-1061,2024-05-02,Ana Diaz,,Laptop,$708.37,10,78.6,,rush order,Main Street
+ORD-1062,2024-05-04,John Smith  ,,Mouse,$483.82,2,81.97,5.0,rush order,Main Street
+ORD-1063,05/06/2024,ana diaz ,SOUTH,Keyboard,"$1,008.86",1,85.48,1.0,call first,Main Street
+ORD-1064,2024-05-08,John Smith  ,,Laptop,$214.40,2,127.68,1.0,call first,Main Street
+ORD-1065,2024-05-10,maria lopez,West,Desk Chair,$385.80,6,92.77,4.0,none,Main Street
+ORD-1066,2024-05-12,ana diaz ,East,Laptop,$447.11,4,69.39,5.0,,Main Street
+ORD-1067,2024-05-14,John Smith  ,East,Keyboard,$252.76,6,,5.0,  gift wrap ,Main Street
+ORD-1068,2024-05-16,  Maria Lopez,,Laptop,$190.73,1,74.57,4.0,rush order,Main Street
+ORD-1069,2024-05-18,John Smith  ,,Desk Chair,$733.56,4,72.65,2.0,none,Main Street
+ORD-1070,05/20/2024,Ana Diaz,South,Mouse,,5,93.63,5.0,rush order,Main Street
+ORD-1071,2024-05-22,maria lopez,,Desk Chair,$162.98,5,80.47,4.0,,Main Street
+ORD-1072,2024-05-24,John Smith  ,,Keyboard,$375.77,7,84.18,1.0,  gift wrap ,Main Street
+ORD-1073,2024-05-26,  Maria Lopez,,Keyboard,$793.82,9,80.21,,none,Main Street
+ORD-1074,2024-05-28,Ana Diaz,,Mouse,$267.01,6,85.05,5.0,none,Main Street
+ORD-1075,2024-05-30,John Smith  ,East,Mouse,$239.16,10,86.37,2.0,,Main Street
+ORD-1076,2024-06-01,maria lopez,,Desk Chair,$358.52,6,50.95,4.0,rush order,Main Street
+ORD-1077,06/03/2024,maria lopez,,Laptop,$544.73,N/A,90.0,,,Main Street
+ORD-1078,2024-06-05,JOHN SMITH,North,Mouse,$315.54,3,65.27,2.0,rush order,Main Street
+ORD-1079,2024-06-07,Ana Diaz,North,Laptop,$864.74,4,58.37,2.0,  gift wrap ,Main Street
+ORD-1080,2024-06-09,ana diaz ,South,Monitor,$889.86,7,79.12,2.0,rush order,Main Street
+ORD-1081,2024-06-11,John Smith  ,East,Desk Chair,$375.76,3,,4.0,,Main Street
+ORD-1082,2024-06-13,  Maria Lopez,north ,Monitor,"$1,416.82",11,69.6,5.0,  gift wrap ,Main Street
+ORD-1083,2024-06-15,Ana Diaz,East,Mouse,$439.46,6,92.47,5.0,,Main Street
+ORD-1084,06/17/2024,JOHN SMITH,East,Keyboard,$869.49,10,59.87,4.0,rush order,Main Street
+ORD-1085,2024-06-19,Ana Diaz,,Monitor,$533.67,8,73.9,2.0,,Main Street
+ORD-1086,2024-06-21,  Maria Lopez,North,Monitor,$526.41,4,71.23,,,Main Street
+ORD-1087,2024-06-23,maria lopez,West,Keyboard,$85.39,3,79.3,3.0,  gift wrap ,Main Street
+ORD-1088,2024-06-25,Ana Diaz,West,Mouse,$150.07,9,84.18,3.0,none,Main Street
+ORD-1089,2024-06-27,Ana Diaz,,Mouse,$329.02,4,64.88,,call first,Main Street
+ORD-1090,2024-06-29,John Smith  ,north ,Desk Chair,($75.50),3,90.86,4.0,,Main Street
+ORD-1091,07/01/2024,Ana Diaz,South,Desk Chair,$539.27,11,80.95,5.0,,Main Street
+ORD-1092,2024-07-03,ana diaz ,SOUTH,Mouse,$331.46,6,,3.0,rush order,Main Street
+ORD-1093,2024-07-05,John Smith  ,South,Mouse,$650.15,1,,4.0,call first,Main Street
+ORD-1094,2024-07-07,ana diaz ,West,Monitor,$862.97,6,79.82,4.0,call first,Main Street
+ORD-1095,2024-07-09,maria lopez,West,Keyboard,$418.72,6,76.69,2.0,none,Main Street
+ORD-1096,2024-07-11,maria lopez,SOUTH,Laptop,$492.89,10,78.45,2.0,rush order,Main Street
+ORD-1097,2024-07-13,Ana Diaz,East,Monitor,$446.91,8,79.58,4.0,,Main Street
+ORD-1098,07/15/2024,JOHN SMITH,South,Desk Chair,$398.61,3,83.38,1.0,,Main Street
+ORD-1099,2024-07-17,  Maria Lopez,,Keyboard,$212.33,,94.21,2.0,,Main Street
+ORD-1100,2024-07-19,Ana Diaz,East,Laptop,$197.83,7,63.33,4.0,,Main Street
+ORD-1101,2024-07-21,maria lopez,,Mouse,$647.26,1,62.42,5.0,none,Main Street
+ORD-1102,2024-07-23,Ana Diaz,North,Desk Chair,$874.26,4,,3.0,rush order,Main Street
+ORD-1103,2024-07-25,  Maria Lopez,SOUTH,Desk Chair,$330.94,2,84.33,2.0,none,Main Street
+ORD-1104,2024-07-27,Ana Diaz,West,Monitor,$324.77,1,98.67,,  gift wrap ,Main Street
+ORD-1105,07/29/2024,Ana Diaz,North,Keyboard,$61.03,11,73.53,,  gift wrap ,Main Street
+ORD-1106,2024-07-31,Ana Diaz,South,Keyboard,$47.82,1,42.47,,  gift wrap ,Main Street
+ORD-1107,2024-08-02,JOHN SMITH,West,Monitor,"$1,030.06",1,54.44,1.0,none,Main Street
+ORD-1108,2024-08-04,John Smith  ,South,Monitor,$224.92,11,67.5,3.0,,Main Street
+ORD-1109,2024-08-06,Ana Diaz,,Monitor,"$1,787.75",3,71.63,3.0,,Main Street
+ORD-1110,2024-08-08,maria lopez,West,Desk Chair,$260.90,9,73.87,4.0,  gift wrap ,Main Street
+ORD-1111,2024-08-10,Ana Diaz,north ,Mouse,$88.64,1,80.58,5.0,rush order,Main Street
+ORD-1112,08/12/2024,JOHN SMITH,North,Desk Chair,$449.60,2,75.32,5.0,  gift wrap ,Main Street
+ORD-1113,2024-08-14,John Smith  ,,Desk Chair,$727.56,2,,4.0,call first,Main Street
+ORD-1114,2024-08-16,JOHN SMITH,South,Desk Chair,$671.73,8,69.86,2.0,  gift wrap ,Main Street
+ORD-1115,2024-08-18,JOHN SMITH,West,Laptop,$778.80,7,67.07,3.0,rush order,Main Street
+ORD-1116,2024-08-20,  Maria Lopez,,Desk Chair,$175.44,6,,1.0,rush order,Main Street
+ORD-1117,2024-08-22,  Maria Lopez,north ,Laptop,"$1,013.58",3,56.97,,call first,Main Street
+ORD-1118,2024-08-24,maria lopez,SOUTH,Keyboard,"$1,053.82",1,85.85,5.0,rush order,Main Street
+ORD-1119,08/26/2024,  Maria Lopez,north ,Keyboard,"$1,084.80",7,81.54,5.0,  gift wrap ,Main Street
+ORD-1120,,John Smith  ,South,Monitor,$505.69,3,77.79,2.0,  gift wrap ,Main Street
+ORD-1121,2024-08-30,Ana Diaz,North,Laptop,$310.47,7,103.82,2.0,call first,Main Street
+ORD-1122,2024-09-01,JOHN SMITH,West,Laptop,$288.01,8,70.67,5.0,call first,Main Street
+ORD-1123,2024-09-03,John Smith  ,SOUTH,Desk Chair,$88.09,10,,3.0,  gift wrap ,Main Street
+ORD-1124,2024-09-05,ana diaz ,SOUTH,Monitor,$265.85,6,,4.0,rush order,Main Street
+ORD-1125,2024-09-07,JOHN SMITH,South,Monitor,$23.19,1,60.84,3.0,rush order,Main Street
+ORD-1126,09/09/2024,  Maria Lopez,South,Desk Chair,$74.97,4,81.05,3.0,  gift wrap ,Main Street
+ORD-1127,2024-09-11,Ana Diaz,North,Laptop,$501.82,10,63.86,,rush order,Main Street
+ORD-1128,2024-09-13,JOHN SMITH,North,Desk Chair,$340.12,6,68.72,5.0,call first,Main Street
+ORD-1129,2024-09-15,JOHN SMITH,,Desk Chair,$485.82,7,85.96,2.0,rush order,Main Street
+ORD-1130,2024-09-17,JOHN SMITH,West,Keyboard,$688.97,6,88.33,5.0,call first,Main Street
+ORD-1131,2024-09-19,JOHN SMITH,East,Laptop,$553.70,2,70.67,2.0,call first,Main Street
+ORD-1132,2024-09-21,  Maria Lopez,South,Laptop,$519.84,10,94.81,3.0,none,Main Street
+ORD-1133,09/23/2024,JOHN SMITH,north ,Monitor,$389.18,9,97.36,5.0,,Main Street
+ORD-1134,2024-09-25,Ana Diaz,East,Keyboard,$217.72,11,101.54,5.0,call first,Main Street
+ORD-1135,2024-09-27,maria lopez,,Laptop,$130.25,10,87.94,5.0,,Main Street
+ORD-1136,2024-09-29,JOHN SMITH,SOUTH,Keyboard,$271.87,4,100.45,2.0,rush order,Main Street
+ORD-1137,2024-10-01,  Maria Lopez,South,Laptop,$394.27,3,51.79,,,Main Street
+ORD-1138,2024-10-03,John Smith  ,South,Keyboard,$433.39,3,75.23,,,Main Street
+ORD-1139,2024-10-05,John Smith  ,SOUTH,Laptop,$779.96,11,66.99,5.0,,Main Street
+ORD-1140,10/07/2024,ana diaz ,West,Mouse,,7,81.79,,,Main Street
+ORD-1141,2024-10-09,maria lopez,South,Laptop,,5,71.43,4.0,none,Main Street
+ORD-1142,2024-10-11,maria lopez,West,Laptop,$102.26,11,77.51,,,Main Street
+ORD-1143,2024-10-13,John Smith  ,,Laptop,$507.09,7,108.23,4.0,rush order,Main Street
+ORD-1144,2024-10-15,ana diaz ,,Desk Chair,$480.99,11,77.45,2.0,call first,Main Street
+ORD-1145,2024-10-17,ana diaz ,South,Laptop,"$1,013.81",11,86.21,4.0,none,Main Street
+ORD-1146,2024-10-19,  Maria Lopez,,Keyboard,$340.37,1,76.52,1.0,none,Main Street
+ORD-1147,10/21/2024,maria lopez,SOUTH,Keyboard,$328.86,4,81.14,,,Main Street
+ORD-1148,2024-10-23,Ana Diaz,South,Keyboard,$692.38,9,,4.0,none,Main Street
+ORD-1149,2024-10-25,  Maria Lopez,North,Mouse,$140.60,9,86.72,3.0,call first,Main Street
+ORD-1150,2024-10-27,ana diaz ,West,Desk Chair,$497.37,,,4.0,,Main Street
+ORD-1151,2024-10-29,maria lopez,North,Monitor,$133.56,4,104.71,2.0,  gift wrap ,Main Street
+ORD-1152,2024-10-31,ana diaz ,South,Desk Chair,"$1,324.25",7,84.64,4.0,none,Main Street
+ORD-1153,2024-11-02,maria lopez,East,Monitor,$294.28,9,88.84,4.0,rush order,Main Street
+ORD-1154,11/04/2024,John Smith  ,SOUTH,Desk Chair,$124.89,2,62.74,4.0,,Main Street
+ORD-1155,2024-11-06,JOHN SMITH,SOUTH,Keyboard,$270.22,7,,2.0,none,Main Street
+ORD-1156,2024-11-08,  Maria Lopez,North,Mouse,$499.63,4,94.1,2.0,none,Main Street
+ORD-1157,2024-11-10,JOHN SMITH,SOUTH,Desk Chair,$606.13,3,92.99,2.0,none,Main Street
+ORD-1158,2024-11-12,JOHN SMITH,North,Mouse,$978.19,6,83.17,3.0,none,Main Street
+ORD-1159,2024-11-14,Ana Diaz,north ,Desk Chair,$243.12,5,93.3,,none,Main Street
+ORD-1160,2024-11-16,ana diaz ,SOUTH,Keyboard,$714.59,7,87.36,2.0,  gift wrap ,Main Street
+ORD-1161,11/18/2024,JOHN SMITH,SOUTH,Laptop,$75.06,4,98.0,,,Main Street
+ORD-1162,2024-11-20,John Smith  ,South,Keyboard,$164.06,10,84.34,2.0,call first,Main Street
+ORD-1163,2024-11-22,John Smith  ,SOUTH,Laptop,$105.38,1,74.66,2.0,rush order,Main Street
+ORD-1164,2024-11-24,John Smith  ,North,Desk Chair,$206.79,10,,,  gift wrap ,Main Street
+ORD-1165,2024-11-26,Ana Diaz,West,Monitor,$692.12,1,36.04,5.0,call first,Main Street
+ORD-1166,2024-11-28,maria lopez,East,Monitor,$248.26,9,,2.0,none,Main Street
+ORD-1167,2024-11-30,maria lopez,South,Monitor,$290.01,4,25.27,5.0,rush order,Main Street
+ORD-1168,12/02/2024,John Smith  ,,Mouse,$509.62,5,54.15,,rush order,Main Street
+ORD-1169,2024-12-04,  Maria Lopez,north ,Keyboard,$587.97,1,86.78,1.0,call first,Main Street
+ORD-1170,2024-12-06,  Maria Lopez,East,Desk Chair,$297.43,8,,2.0,,Main Street
+ORD-1171,2024-12-08,  Maria Lopez,,Keyboard,$162.97,2,62.56,1.0,  gift wrap ,Main Street
+ORD-1172,2024-12-10,Ana Diaz,East,Monitor,"$1,182.84",8,69.32,1.0,call first,Main Street
+ORD-1173,2024-12-12,Ana Diaz,East,Laptop,$299.08,8,100.56,2.0,  gift wrap ,Main Street
+ORD-1174,2024-12-14,Ana Diaz,SOUTH,Laptop,$324.28,10,72.74,3.0,rush order,Main Street
+ORD-1175,12/16/2024,John Smith  ,North,Monitor,$358.33,8,,4.0,none,Main Street
+ORD-1176,2024-12-18,Ana Diaz,north ,Desk Chair,$633.11,4,79.97,1.0,rush order,Main Street
+ORD-1177,2024-12-20,  Maria Lopez,north ,Keyboard,$96.52,9,86.12,5.0,call first,Main Street
+ORD-1178,2024-12-22,ana diaz ,East,Desk Chair,"$1,492.33",10,104.25,2.0,  gift wrap ,Main Street
+ORD-1179,2024-12-24,JOHN SMITH,South,Laptop,$317.00,4,81.97,1.0,,Main Street
+ORD-1180,2024-12-26,ana diaz ,North,Laptop,$648.46,2,64.96,4.0,  gift wrap ,Main Street
+ORD-1181,2024-12-28,  Maria Lopez,SOUTH,Desk Chair,$126.38,10,78.35,4.0,,Main Street
+ORD-1182,12/30/2024,John Smith  ,SOUTH,Laptop,$472.01,2,79.47,4.0,none,Main Street
+ORD-1183,2025-01-01,Ana Diaz,South,Laptop,"$1,342.84",7,59.53,1.0,call first,Main Street
+ORD-1184,2025-01-03,John Smith  ,North,Keyboard,"$1,220.07",3,76.16,1.0,rush order,Main Street
+ORD-1185,2025-01-05,John Smith  ,,Desk Chair,$636.40,2,68.87,,  gift wrap ,Main Street
+ORD-1186,2025-01-07,  Maria Lopez,North,Mouse,$194.41,9,93.87,,call first,Main Street
+ORD-1187,2025-01-09,John Smith  ,north ,Laptop,$943.31,2,80.52,5.0,rush order,Main Street
+ORD-1188,2025-01-11,maria lopez,SOUTH,Desk Chair,$74.41,8,75.76,2.0,rush order,Main Street
+ORD-1189,01/13/2025,maria lopez,North,Desk Chair,$188.00,8,78.41,1.0,  gift wrap ,Main Street
+ORD-1190,2025-01-15,Ana Diaz,north ,Desk Chair,$390.89,1,83.35,5.0,rush order,Main Street
+ORD-1191,2025-01-17,JOHN SMITH,South,Desk Chair,$82.50,2,89.25,1.0,call first,Main Street
+ORD-1192,2025-01-19,JOHN SMITH,East,Monitor,$269.71,9,65.0,1.0,,Main Street
+ORD-1193,2025-01-21,John Smith  ,West,Desk Chair,$724.77,6,64.38,,none,Main Street
+ORD-1194,2025-01-23,ana diaz ,north ,Monitor,$226.12,2,96.57,3.0,rush order,Main Street
+ORD-1195,2025-01-25,  Maria Lopez,SOUTH,Desk Chair,$748.82,11,73.81,4.0,  gift wrap ,Main Street
+ORD-1196,01/27/2025,John Smith  ,North,Keyboard,"$1,755.72",3,58.75,,,Main Street
+ORD-1197,2025-01-29,  Maria Lopez,,Mouse,$554.74,1,86.66,5.0,rush order,Main Street
+ORD-1198,2025-01-31,John Smith  ,South,Mouse,$739.78,11,86.95,2.0,call first,Main Street
+ORD-1199,2025-02-02,ana diaz ,South,Mouse,$965.29,1,57.04,5.0,rush order,Main Street
+ORD-1002,2024-01-05,JOHN SMITH,East,Monitor,"$1,094.88",8,80.17,1.0,none,Main Street
+ORD-1003,2024-01-07,John Smith  ,north ,Desk Chair,$344.80,10,83.73,4.0,,Main Street
+ORD-1004,2024-01-09,John Smith  ,East,Keyboard,$519.69,3,80.66,5.0,  gift wrap ,Main Street
+ORD-1050,2024-04-10,Ana Diaz,South,Desk Chair,$434.46,11,63.08,5.0,call first,Main Street
+ORD-1051,2024-04-12,maria lopez,,Desk Chair,$583.21,4,74.3,1.0,rush order,Main Street
+ORD-1100,2024-07-19,Ana Diaz,East,Laptop,$197.83,7,63.33,4.0,,Main Street
+ORD-1101,2024-07-21,maria lopez,,Mouse,$647.26,1,62.42,5.0,none,Main Street
+ORD-1180,2024-12-26,ana diaz ,North,Laptop,$648.46,2,64.96,4.0,  gift wrap ,Main Street

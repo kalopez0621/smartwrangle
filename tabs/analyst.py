@@ -20,8 +20,17 @@ This keeps API costs low, protects data privacy, and produces
 focused answers because the model only gets relevant context.
 """
 
+import os
+from pathlib import Path
+
 import streamlit as st
 import anthropic
+
+# ── Local .env file location (laptop only) ───────────────────────
+# On your laptop the API key lives in a file named .env in the
+# project folder, one level up from this file (tabs/ -> project root).
+# On Streamlit Cloud there is no .env file, so it is simply skipped.
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 # ── AI model setting ─────────────────────────────────────────────
 # The Claude model the AI Analyst uses. Keep it in ONE place so the
@@ -29,6 +38,42 @@ import anthropic
 # claude-haiku-4-5-20251001 may be retired as early as Oct 15, 2026.
 # claude-haiku-5-5 replaces it and costs about 10x less per question.
 CLAUDE_MODEL = "claude-haiku-5-5"
+
+# ── API key lookup ───────────────────────────────────────────────
+def _get_api_key():
+    """
+    Find the Anthropic API key without ever storing it in the code.
+
+    Where it looks, in order:
+        1. Streamlit secrets  (Streamlit Cloud: Settings > Secrets,
+                               or a local .streamlit/secrets.toml)
+        2. Environment / .env (your laptop's .env file)
+
+    Returns the key as a string, or None if it was not found.
+    """
+    # Step 1: Streamlit secrets.
+    # If no secrets file exists at all, Streamlit raises an error
+    # instead of returning None, so we catch it and move on.
+    try:
+        key = st.secrets.get("ANTHROPIC_API_KEY")
+    except Exception:
+        key = None
+
+    if key:
+        return key
+
+    # Step 2: read the local .env file into environment variables.
+    # This runs on every check, so a key added while the app is
+    # running is picked up without a restart.
+    # The try/except keeps the app running if python-dotenv is missing.
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(ENV_FILE, override=True)
+    except ImportError:
+        pass
+
+    return os.environ.get("ANTHROPIC_API_KEY")
+
 
 # ── Context builder ────────────────────────────────────────────────────────────
 
@@ -164,13 +209,18 @@ def render_analyst_tab():
         st.session_state.analyst_history = []
 
     # ── Check API key ──────────────────────────────────────────────────────────
-    # st.secrets reads from .streamlit/secrets.toml locally
-    # and from Streamlit Cloud secrets in production.
-    api_key = st.secrets.get("ANTHROPIC_API_KEY", None)
+    # _get_api_key() checks Streamlit secrets first, then the local .env.
+    # If neither has a key, show setup steps instead of crashing.
+    # The other three tabs keep working without a key.
+    api_key = _get_api_key()
     if not api_key:
-        st.error(
-            "Anthropic API key not found. "
-            "Add ANTHROPIC_API_KEY to your Streamlit secrets."
+        st.info(
+            "**The AI Analyst needs an Anthropic API key.**\n\n"
+            "- On your laptop: copy `.env.example`, name the copy `.env`, "
+            "and paste your key into it. Then refresh this page.\n"
+            "- On Streamlit Cloud: open the app's Settings > Secrets and add "
+            "`ANTHROPIC_API_KEY = \"your-key\"`.\n\n"
+            "The Understand, Discover, and Clean & Export tabs work without a key."
         )
         return
 

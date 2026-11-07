@@ -5,3 +5,6 @@ __pycache__/
 
 # Local Python environment: rebuilt with pip, never uploaded
 venv/
+
+# Real datasets downloaded for local testing only (other people's data, not ours to republish)
+test_data/real/
