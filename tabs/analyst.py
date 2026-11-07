@@ -248,18 +248,38 @@ def render_analyst_tab():
         "Summarize what this dataset contains in plain English.",
     ]
 
-    # Render suggestions as clickable pills in a single row
-    cols = st.columns(len(suggested))
-    for i, (col, question) in enumerate(zip(cols, suggested)):
-        with col:
-            if st.button(
-                question,
-                key=f"suggestion_{i}",
-                width="stretch"
-            ):
-                # Clicking a suggestion populates it as the user's question
-                st.session_state.analyst_prefill = question
-                st.rerun()
+    # Let the button text wrap onto a second line instead of being cut off
+    # with "...". The CSS only targets buttons inside the container below
+    # (Streamlit gives a container with key="X" the CSS class "st-key-X"),
+    # so no other button in the app changes.
+    st.markdown("""
+    <style>
+        .st-key-analyst_suggestions button p {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+        }
+        .st-key-analyst_suggestions button {
+            height: auto !important;
+            min-height: 2.5rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Render suggestions as clickable buttons in 2 rows of 2.
+    # Four in one row made each button too narrow to show the full question.
+    with st.container(key="analyst_suggestions"):
+        cols = st.columns(2) + st.columns(2)       # row 1: 2 columns, row 2: 2 columns
+        for i, (col, question) in enumerate(zip(cols, suggested)):
+            with col:
+                if st.button(
+                    question,
+                    key=f"suggestion_{i}",
+                    width="stretch"
+                ):
+                    # Clicking a suggestion populates it as the user's question
+                    st.session_state.analyst_prefill = question
+                    st.rerun()
 
     st.markdown("---")
 

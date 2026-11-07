@@ -47,6 +47,10 @@ No data science background is needed. Every finding and every tool is explained 
 
 ![Convert text or currency to numbers](docs/screenshots/convert.png)
 
+**AI Analyst.** Ask questions in plain English, or click a suggested one. The AI sees only a summary of the data (column types, statistics, and quality findings), never the raw rows.
+
+![AI Analyst](docs/screenshots/ai_analyst.png)
+
 ---
 
 ## Features
