@@ -67,7 +67,9 @@ How to use this file
 # StandardScaler, MinMaxScaler : from scikit-learn — used to rescale numbers
 #   StandardScaler : makes a column have mean=0 and standard deviation=1
 #   MinMaxScaler   : compresses a column into the range [0, 1]
+# warnings    : to hide pandas' "guessing the date format" notices
 import re
+import warnings
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -768,6 +770,188 @@ def convert_to_numeric(df: pd.DataFrame, column_name: str) -> tuple:
     new_df[column_name] = _parse_numbers(df[column_name])
 
     log_message = f"Converted '{column_name}' to numbers ({preview['n_ok']:,} values)."
+    if preview["n_lost"]:
+        log_message += (
+            f" {preview['n_lost']:,} value(s) could not be read and are now blank."
+        )
+    return new_df, log_message
+
+
+# ── Convert text to dates ──────────────────────────────────────────────────────
+# SmartWrangle already turns date text into real dates when the column NAME
+# sounds like a date ("Order Date", "created_at"). This tool is for every
+# other column, such as "Shipped" or "Start", and for files that write the
+# day before the month (European style).
+
+# The two ways to read a value like 03/05/2024, shown in the app
+DATE_ORDERS = {
+    "month_first": "Month first (US style): 03/05/2024 is March 5, 2024",
+    "day_first":   "Day first (UK and most other countries): 03/05/2024 is May 3, 2024",
+}
+
+
+def _read_dates(text: pd.Series, day_first: bool) -> pd.Series:
+    """Read text values one by one as dates, in whatever format each uses."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")   # pandas warns about guessing formats
+        try:
+            out = pd.to_datetime(text, format="mixed", dayfirst=day_first,
+                                 errors="coerce")
+        except (ValueError, TypeError):
+            # Rare: a column that mixes time zones cannot be read in one go,
+            # so read each value on its own and drop the time zone.
+            def one(value):
+                """Read a single value; blank if it is not a date."""
+                d = pd.to_datetime(value, dayfirst=day_first, errors="coerce")
+                if pd.isna(d):
+                    return pd.NaT
+                return d.tz_localize(None) if d.tzinfo else d
+            out = pd.to_datetime(text.map(one), errors="coerce")
+    # Dates with a time zone are kept as local clock time without the zone,
+    # so the whole column has one consistent type.
+    if getattr(out.dt, "tz", None) is not None:
+        out = out.dt.tz_localize(None)
+    return out
+
+
+def _parse_dates(series: pd.Series, day_first: bool) -> pd.Series:
+    """
+    Read every value in a column as a date. Unreadable values become NaT (blank).
+
+    Values that start with a 4-digit year (2024-03-05, 2024/03/05 14:30) are
+    always read as year, month, day. This matters: with day-first reading
+    on, the general reader would otherwise turn 2024-03-05 into May 3.
+    Every other value ("03/05/2024", "March 5, 2024") is read in the order
+    the user chose.
+    """
+    # Work on clean text: stray spaces are common in real files
+    text = series.astype("string").str.strip()
+
+    year_first = text.str.match(r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", na=False)
+    other = text.notna() & ~year_first
+
+    # Start with all blanks, then fill in each group
+    dates = pd.Series(pd.NaT, index=series.index, dtype="datetime64[ns]")
+    if year_first.any():
+        dates.loc[year_first] = _read_dates(text[year_first], day_first=False)
+    if other.any():
+        dates.loc[other] = _read_dates(text[other], day_first=day_first)
+    return dates
+
+
+def date_conversion_preview(df: pd.DataFrame, column_name: str,
+                            order: str = "month_first") -> dict:
+    """
+    Check what converting a column to dates WOULD do, without changing it.
+
+    Returns
+    -------
+    dict with keys:
+        n_filled     int        Cells that have a value now
+        n_ok         int        Of those, how many can be read as dates
+        n_lost       int        Of those, how many would become blank
+        lost_examples list      Up to 3 values that cannot be read
+        examples     DataFrame  Up to 5 different values and the date each becomes
+        n_ambiguous  int        Values that give a DIFFERENT date in the other order
+                                (like 03/05/2024), so the order choice matters
+        order_hint   str|None   A warning when the values show the file uses
+                                the OTHER order: '25/12/2024' only makes sense
+                                day first, '12/25/2024' only month first
+    """
+    original = df[column_name]
+    day_first = order == "day_first"
+    dates = _parse_dates(original, day_first)
+    other = _parse_dates(original, not day_first)     # the other reading
+
+    filled = original.notna()
+    lost = filled & dates.isna()
+
+    # Values both readings understand but disagree on (03/05 vs 05/03)
+    both = dates.notna() & other.notna()
+    ambiguous = both & (dates != other)
+
+    # Five different values, to show the user what will happen
+    sample = original[filled].drop_duplicates().head(5)
+    examples = pd.DataFrame({
+        "Value now": sample.astype(str).values,
+        "Becomes": [
+            f"{d:%B} {d.day}, {d.year}" if pd.notna(d) else "(blank: not a date)"
+            for d in dates[sample.index]
+        ],
+    })
+
+    return {
+        "n_filled": int(filled.sum()),
+        "n_ok": int((filled & dates.notna()).sum()),
+        "n_lost": int(lost.sum()),
+        "lost_examples": original[lost].astype(str).unique()[:3].tolist(),
+        "examples": examples,
+        "n_ambiguous": int(ambiguous.sum()),
+        "order_hint": _order_hint(original, order),
+    }
+
+
+def _order_hint(series: pd.Series, order: str):
+    """
+    Look for values that can only be read one way, like 25/12/2024 (there is
+    no month 25, so the day must come first). If they point to the order the
+    user did NOT pick, return a short warning; otherwise return None.
+
+    This is needed because pandas quietly reads 25/12/2024 as December 25
+    even when month first is chosen, while 05/03/2024 in the same file is
+    read as March 5. The result would be a column of mixed-up dates.
+    """
+    parts = series.astype("string").str.strip().str.extract(
+        r"^(\d{1,2})[/.-](\d{1,2})[/.-]\d{2,4}"
+    )
+    first = pd.to_numeric(parts[0], errors="coerce")
+    second = pd.to_numeric(parts[1], errors="coerce")
+    day_first_only = int(((first > 12) & (second <= 12)).sum())
+    month_first_only = int(((second > 12) & (first <= 12)).sum())
+
+    if order == "month_first" and day_first_only and not month_first_only:
+        example = series[(first > 12) & (second <= 12)].astype(str).iloc[0].strip()
+        return (f"{day_first_only:,} value(s) like '{example}' only make sense with "
+                f"the day first. This file probably writes the day first.")
+    if order == "day_first" and month_first_only and not day_first_only:
+        example = series[(second > 12) & (first <= 12)].astype(str).iloc[0].strip()
+        return (f"{month_first_only:,} value(s) like '{example}' only make sense with "
+                f"the month first. This file probably writes the month first.")
+    return None
+
+
+def convert_to_dates(df: pd.DataFrame, column_name: str,
+                     order: str = "month_first") -> tuple:
+    """
+    Convert a text column into real dates, in place.
+
+    Use date_conversion_preview() first. Like convert_to_numeric(), this
+    refuses to run when no value can be read, so a column is never wiped out.
+
+    Returns
+    -------
+    tuple of (new_df, log_message)
+    """
+    if column_name not in df.columns:
+        return df.copy(), f"Column '{column_name}' not found."
+
+    preview = date_conversion_preview(df, column_name, order)
+
+    # Safety net: never wipe out a whole column
+    if preview["n_ok"] == 0:
+        return df.copy(), (
+            f"'{column_name}' was not converted: none of its values can be "
+            f"read as dates."
+        )
+
+    new_df = df.copy()
+    new_df[column_name] = _parse_dates(df[column_name], order == "day_first")
+
+    order_words = "day first" if order == "day_first" else "month first"
+    log_message = (
+        f"Converted '{column_name}' to dates ({preview['n_ok']:,} values, "
+        f"read {order_words})."
+    )
     if preview["n_lost"]:
         log_message += (
             f" {preview['n_lost']:,} value(s) could not be read and are now blank."

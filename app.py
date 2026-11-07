@@ -266,7 +266,8 @@ with st.sidebar:
 
     # ── File uploader ──────────────────────────────────────────────────────────
     # st.file_uploader() shows a drag-and-drop zone.
-    # type=["csv","xlsx"] restricts to spreadsheet files.
+    # type=[...] restricts to spreadsheet files: CSV, Excel (.xlsx), and
+    # older Excel 97-2003 files (.xls).
     # When a file is uploaded, this returns a file-like object.
     # When nothing is uploaded, it returns None.
     #
@@ -279,8 +280,8 @@ with st.sidebar:
 
     uploaded_file = st.file_uploader(
         "Upload your dataset",
-        type=["csv", "xlsx"],
-        help="Supported formats: CSV (.csv) and Excel (.xlsx)",
+        type=["csv", "xlsx", "xls"],
+        help="Supported formats: CSV (.csv) and Excel (.xlsx and older .xls)",
         key=f"uploader_{st.session_state.uploader_version}",
     )
 
@@ -366,6 +367,12 @@ if uploaded_file is not None:
                     # engine="openpyxl" is the modern Excel reader.
                     # Without this, newer .xlsx files may fail to load.
                     raw_df = pd.read_excel(uploaded_file, engine="openpyxl")
+
+                elif file_ext == ".xls":
+                    # Older Excel 97-2003 files use a different format that
+                    # openpyxl cannot read. xlrd is the reader pandas uses
+                    # for them.
+                    raw_df = pd.read_excel(uploaded_file, engine="xlrd")
 
                 else:
                     st.error(

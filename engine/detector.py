@@ -320,8 +320,9 @@ def infer_expected_type(series: pd.Series) -> str:
 
     Uses the first 200 filled values. Checks, in order:
         85%+ look like plain numbers          -> "metric"
-        60%+ contain "$" or ","               -> "financial"
+        60%+ contain "$" or a comma like 1,234 -> "financial"
         75%+ can be read as dates             -> "date_column"
+                                                 (each value read on its own)
         95%+ of all values are unique         -> "id_column"
         otherwise                             -> "categorical"
     """
@@ -337,16 +338,21 @@ def infer_expected_type(series: pd.Series) -> str:
     if numeric_match_ratio >= 0.85:
         return "metric"
 
-    # Currency-looking text like "$1,234.50"
-    currency_ratio = sample.str.contains(r"\$|,").mean()
+    # Currency-looking text like "$1,234.50": a dollar sign, or a comma
+    # between digits (1,234). A plain comma is not enough, or dates like
+    # "August 14, 2020" would be mistaken for money.
+    currency_ratio = sample.str.contains(r"\$|\d,\d{3}").mean()
     if currency_ratio >= 0.60:
         return "financial"
 
-    # Dates in any common format
+    # Dates in any common format. format="mixed" reads each value on its own;
+    # without it, pandas copies the first value's layout to every row, so in
+    # a day-first column "16/01/2024" fails after "01/01/2024" is read as
+    # month first.
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            converted = pd.to_datetime(sample, errors="coerce")
+            converted = pd.to_datetime(sample, format="mixed", errors="coerce")
 
         if converted.notna().mean() >= 0.75:
             return "date_column"
@@ -397,8 +403,12 @@ def generate_column_recommendations(
                     "Convert Text or Currency to Numbers in the Clean & Export tab."
                 )
 
-            elif detected == "categorical" and expected == "date_column":
-                rec_text = "Values appear to be dates. Consider converting to datetime."
+            # Any kind of text column whose values look like dates
+            elif detected in ("categorical", "high_cardinality", "text") and expected == "date_column":
+                rec_text = (
+                    "Values appear to be dates stored as text. Use "
+                    "Convert Text to Dates in the Clean & Export tab."
+                )
 
             elif detected == "metric" and expected == "id_column":
                 rec_text = "High uniqueness suggests this is an identifier. Consider excluding from analysis."

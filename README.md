@@ -12,7 +12,7 @@
 
 ## What It Does
 
-SmartWrangle is a guided data cleaning and exploration app. You upload a CSV or Excel file and work through four tabs:
+SmartWrangle is a guided data cleaning and exploration app. You upload a CSV or Excel file (.xlsx or the older .xls) and work through four tabs:
 
 | Tab | The question it answers | What you get |
 |---|---|---|
@@ -69,7 +69,7 @@ No data science background is needed. Every finding and every tool is explained 
 - Charts chosen automatically: trends over time, category breakdowns, and number spreads
 - A headline above every chart that states the main finding
 - Long-tail values handled for readability (top 10 categories, optional 99th percentile cap)
-- Chart builder: bar, scatter, histogram (with optional log scale), and line over time
+- Chart builder: bar, scatter, histogram (with optional log scale), box plot (one box per group, with optional log scale), and line over time
 
 ### Clean & Export
 - Suggested actions ranked by priority, each with a one-click fix
@@ -80,6 +80,7 @@ No data science background is needed. Every finding and every tool is explained 
 - Remove or rename a column
 - Trim extra spaces and standardize capitalization (blank cells stay blank)
 - Convert text or currency to numbers, with a preview and a confirmation step whenever values would be lost
+- Convert text to dates: shows how each value will be read, lets you choose month first (US) or day first, and warns when the values show the file uses the other order
 - Pull numbers out of text into a new column: "93 min" becomes 93, and "$137K-$171K" becomes 154,000 (first number, last number, or the average of a range, with K and M read as thousand and million)
 - Preparation for modeling: log scale, standard scale, 0 to 1 scale, one-hot encoding, and extracting year, month, or day from a date
 - Undo for every action, plus a running action history
@@ -150,7 +151,7 @@ The other three tabs work without this.
 
 ## Test Data
 
-`test_data/smartwrangle_messy_test.csv` (and the matching `.xlsx`) is a 208-row file with problems planted on purpose:
+`test_data/smartwrangle_messy_test.csv` (and the matching `.xlsx` and older-format `.xls`) is a 208-row file with problems planted on purpose:
 
 - Blank cells and 8 exact duplicate rows
 - Dollar amounts and quantities stored as text, including accounting negatives like `($1,250.00)` and the word "seven"
@@ -201,7 +202,7 @@ smartwrangle/
 | Data | pandas 3, NumPy |
 | Charts | Plotly |
 | Scaling | scikit-learn |
-| Excel files | openpyxl |
+| Excel files | openpyxl (.xlsx), xlrd (.xls) |
 | AI Analyst | Anthropic API (Claude Haiku 5.5), python-dotenv |
 | Language | Python 3.12 (also runs on 3.13) |
 
@@ -212,10 +213,7 @@ smartwrangle/
 These are planned, not built:
 
 - Logins, usage limits, and payments, so the app can run as a hosted service
-- A general column type converter (text to date)
-- Box plots in the chart builder
 - PDF report
-- Support for older `.xls` Excel files
 
 ---
 

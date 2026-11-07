@@ -51,8 +51,12 @@ from engine.cleaner  import (
     numeric_conversion_preview, convert_to_numeric,
     find_placeholders, placeholder_selected_by_default, blank_placeholders,
     EXTRACT_METHODS, extract_number_preview, extract_number,
+    DATE_ORDERS, date_conversion_preview, convert_to_dates,
 )
-from engine.detector import get_columns_of_type, detect_column_types, count_unreadable_dates
+from engine.detector import (
+    get_columns_of_type, detect_column_types, count_unreadable_dates,
+    infer_expected_type,
+)
 from engine.quality  import score_dataset
 
 # Utility modules
@@ -630,6 +634,81 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             if st.button("Convert to numbers", key="clean_currency",
                          disabled=not can_convert):
                 new_df, msg = convert_to_numeric(df, col_cc)
+                _apply_action(new_df, msg)
+
+    # ── Convert text to dates ──────────────────────────────────────────────────
+    # Date columns with date-like names are converted automatically on upload.
+    # This tool covers the rest, and files that write the day before the month.
+    with st.expander("📅 Convert Text to Dates"):
+        st.caption(
+            "Turn dates stored as text (like 03/05/2024 or March 5, 2024) into real "
+            "dates, so time charts and Extract Year or Month can use them. "
+            "You will see how each value is read before anything changes."
+        )
+        text_cols_dt = [
+            c for c in all_cols
+            if pd.api.types.is_string_dtype(df[c]) or df[c].dtype == object
+        ]
+        if not text_cols_dt:
+            st.info("No text columns found. Columns that are already dates do not need this.")
+        else:
+            # Columns whose values look like dates go to the top of the list
+            looks_like_dates = [c for c in text_cols_dt
+                                if infer_expected_type(df[c]) == "date_column"]
+            text_cols_dt = looks_like_dates + [c for c in text_cols_dt
+                                               if c not in looks_like_dates]
+
+            col_dt = st.selectbox("Column to convert", text_cols_dt, key="dt_col")
+            order_dt = st.radio(
+                "How are dates like 03/05/2024 written in this file?",
+                list(DATE_ORDERS.keys()),
+                format_func=lambda k: DATE_ORDERS[k],
+                key="dt_order",
+            )
+
+            # ── Preview: what WOULD happen (nothing is changed yet) ───────────
+            p = date_conversion_preview(df, col_dt, order_dt)
+
+            # Warn when the values themselves show the other order is right
+            if p["order_hint"]:
+                st.warning(p["order_hint"].replace("$", "\\$"))
+            elif p["n_ambiguous"]:
+                st.info(
+                    f"{p['n_ambiguous']:,} value(s) give a different date depending on "
+                    f"the order (like 03/05/2024). Make sure the choice above matches "
+                    f"how this file writes dates."
+                )
+
+            st.dataframe(p["examples"], hide_index=True, width="stretch")
+
+            lost = ", ".join(f"'{e}'" for e in p["lost_examples"]).replace("$", "\\$")
+            can_convert_dt = False
+            if p["n_ok"] == 0:
+                # Nothing can be read as a date: block the conversion
+                st.error(
+                    f"None of the {p['n_filled']:,} values in '{col_dt}' can be read "
+                    f"as dates, so converting would blank out the whole column. "
+                    f"Nothing will be changed."
+                )
+            elif p["n_lost"] > 0:
+                # Some values would be lost: make the user confirm first
+                st.warning(
+                    f"{p['n_ok']:,} of {p['n_filled']:,} values will become dates. "
+                    f"{p['n_lost']:,} cannot be read as dates and will become blank "
+                    f"(for example: {lost})."
+                )
+                can_convert_dt = st.checkbox(
+                    f"I understand {p['n_lost']:,} value(s) will become blank",
+                    key="dt_confirm",
+                )
+            else:
+                st.success(f"All {p['n_filled']:,} filled values can be read as dates.")
+                can_convert_dt = True
+
+            # The button stays greyed out until it is safe (or confirmed)
+            if st.button("Convert to dates", key="clean_dates",
+                         disabled=not can_convert_dt):
+                new_df, msg = convert_to_dates(df, col_dt, order_dt)
                 _apply_action(new_df, msg)
 
     # ── Pull numbers out of text ───────────────────────────────────────────────

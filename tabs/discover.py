@@ -271,8 +271,9 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
     # Chart type selector
     chart_choice = st.selectbox(
         "What kind of chart?",
-        ["Bar — compare categories", "Scatter — compare two numbers",
-         "Histogram — see value spread", "Line — values over time"],
+        ["Bar: compare categories", "Scatter: compare two numbers",
+         "Histogram: see value spread", "Box plot: compare spreads and spot outliers",
+         "Line: values over time"],
         key="explorer_chart_type"
     )
 
@@ -348,6 +349,69 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
             )
             fig.update_layout(plot_bgcolor="white", bargap=0.05)
             st.plotly_chart(fig, width="stretch", key="explorer_hist")
+
+    # ── Box plot builder ───────────────────────────────────────────────────────
+    # A box plot shows the middle half of the values as a box, the median as
+    # a line inside it, and unusual values (outliers) as single dots. With a
+    # "group by" column, it draws one box per category so spreads can be
+    # compared side by side.
+    elif chart_choice.startswith("Box"):
+        if not numeric_cols:
+            st.info("No numeric columns available for a box plot.")
+        else:
+            col1, col2 = st.columns(2)
+            y_col = col1.selectbox("Number column", numeric_cols, key="box_y")
+            group_col = col2.selectbox(
+                "Group by (optional)", ["None"] + cat_cols, key="box_group"
+            )
+            log_y = st.checkbox(
+                "Use log scale (helps when a few values are much larger than the rest)",
+                key="box_log"
+            )
+
+            # Only rows that have a number are drawn.
+            plot_df = df[df[y_col].notna()]
+
+            # Log scale cannot show zero or negative values, so drop them
+            # and say how many were left out.
+            if log_y:
+                n_before = len(plot_df)
+                plot_df = plot_df[plot_df[y_col] > 0]
+                n_dropped = n_before - len(plot_df)
+                if n_dropped:
+                    st.caption(
+                        f"{n_dropped:,} value(s) of zero or below are hidden, "
+                        f"because a log scale cannot show them."
+                    )
+
+            group_arg = None
+            if group_col != "None":
+                group_arg = group_col
+                # Keep the 10 most common groups so the boxes stay readable.
+                top_groups = plot_df[group_col].value_counts().head(10).index
+                n_groups = plot_df[group_col].nunique()
+                plot_df = plot_df[plot_df[group_col].isin(top_groups)]
+                if n_groups > 10:
+                    st.caption(
+                        f"Showing the 10 most common of {n_groups:,} groups in {group_col}."
+                    )
+
+            if plot_df.empty:
+                st.info("There are no values to draw with these choices.")
+            else:
+                title = f"Spread of {y_col}" + (f" by {group_col}" if group_arg else "")
+                fig = px.box(
+                    plot_df, x=group_arg, y=y_col, log_y=log_y,
+                    color_discrete_sequence=["#3b82f6"],
+                    title=title,
+                )
+                fig.update_layout(plot_bgcolor="white")
+                st.plotly_chart(fig, width="stretch", key="explorer_box")
+                st.caption(
+                    "How to read it: the box holds the middle half of the values, "
+                    "the line inside the box is the median, and dots are unusual "
+                    "values (outliers)."
+                )
 
     # ── Line chart builder ─────────────────────────────────────────────────────
     elif chart_choice.startswith("Line"):

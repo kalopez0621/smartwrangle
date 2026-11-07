@@ -31,6 +31,10 @@ numpy==2.5.4
 # openpyxl is required for pd.read_excel() to open .xlsx files.
 openpyxl==3.1.5
 
+# xlrd is required for pd.read_excel() to open older .xls files
+# (Excel 97-2003). pandas 3 needs version 2.0.1 or newer.
+xlrd==2.0.2
+
 
 # ── Visualization ────────────────────────────────────────────
 # plotly draws every chart in the Discover tab.
