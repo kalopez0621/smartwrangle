@@ -58,7 +58,7 @@ import pandas as pd
 import os
 
 # Engine modules — all the intelligence of the app lives here
-from engine.detector import detect_column_types
+from engine.detector import detect_column_types, count_unreadable_dates
 
 # Tab render functions — each tab is a separate file
 from tabs.understand   import render_understand_tab
@@ -426,16 +426,10 @@ if uploaded_file is not None:
                 # blank. We count those so the Understand tab can warn the
                 # user instead of the values disappearing silently.
                 # Saved as {column: (how many, up to 3 example values)}.
-                date_warnings = {}
-                for _col, _type in col_types.items():
-                    if _type != "date_column":
-                        continue
-                    # Had a value in the file, but is blank after converting
-                    _lost = raw_df[_col].notna() & working_df[_col].isna()
-                    if _lost.any():
-                        _examples = raw_df.loc[_lost, _col].astype(str).unique()[:3]
-                        date_warnings[_col] = (int(_lost.sum()), list(_examples))
-                st.session_state.date_warnings = date_warnings
+                # The same function runs again when the user resets to the original.
+                st.session_state.date_warnings = count_unreadable_dates(
+                    raw_df, working_df, col_types
+                )
 
                 # ── Save everything to session state ───────────────────────────
                 st.session_state.working_df      = working_df

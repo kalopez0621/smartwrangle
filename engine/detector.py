@@ -246,6 +246,39 @@ def detect_column_types(df: pd.DataFrame) -> dict:
 
 # ── Helper Functions ──────────────────────────────────────────────────────────
 
+def count_unreadable_dates(raw_df: pd.DataFrame, converted_df: pd.DataFrame,
+                           col_types: dict) -> dict:
+    """
+    Count values that were lost when text columns were turned into dates.
+
+    detect_column_types() turns values that are not real dates (like
+    "not a date" or "2024-02-30") into blanks. This compares the file
+    before and after so the Understand tab can warn the user.
+
+    Used by app.py when a file loads, and by Reset to Original.
+
+    Parameters
+    ----------
+    raw_df       : the data before detect_column_types() ran
+    converted_df : the same data after it ran
+    col_types    : the result of detect_column_types()
+
+    Returns
+    -------
+    dict   {column: (how many values were lost, up to 3 example values)}
+    """
+    warnings_found = {}
+    for col, col_type in col_types.items():
+        if col_type != "date_column" or col not in raw_df.columns:
+            continue
+        # Had a value in the file, but is blank after converting
+        lost = raw_df[col].notna() & converted_df[col].isna()
+        if lost.any():
+            examples = raw_df.loc[lost, col].astype(str).unique()[:3]
+            warnings_found[col] = (int(lost.sum()), list(examples))
+    return warnings_found
+
+
 def get_columns_of_type(col_types: dict, *types: str) -> list:
     """
     List the columns that have any of the given types.

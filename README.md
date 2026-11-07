@@ -61,6 +61,7 @@ No data science background is needed. Every finding and every tool is explained 
 - Each column labeled as a date, money amount, number, category, free text, or identifier
 - Plain-English findings about missing values, duplicates, uneven number spreads, and extreme values
 - A warning when values in a date column could not be read as dates (for example "2024-02-30")
+- A warning when placeholder values like ERROR or UNKNOWN are hiding missing data
 - Recommendations when a column's values do not match its type (for example numbers stored as text)
 - Data preview and an advanced section with per-column statistics
 
@@ -73,13 +74,16 @@ No data science background is needed. Every finding and every tool is explained 
 ### Clean & Export
 - Suggested actions ranked by priority, each with a one-click fix
 - Remove duplicate rows, with a side-by-side preview first
+- Mark placeholder values as blank: finds words like ERROR, UNKNOWN, N/A, and NULL (and the code -1) that hide missing data, and lets you choose which to blank. -1 and one-off words start unticked, since they may be real values.
 - Fill missing values with the median, mean, most common value, or a value you choose (median and mean are offered only for number columns)
 - Remove rows with missing values, in any column or in one column
 - Remove or rename a column
 - Trim extra spaces and standardize capitalization (blank cells stay blank)
 - Convert text or currency to numbers, with a preview and a confirmation step whenever values would be lost
+- Pull numbers out of text into a new column: "93 min" becomes 93, and "$137K-$171K" becomes 154,000 (first number, last number, or the average of a range, with K and M read as thousand and million)
 - Preparation for modeling: log scale, standard scale, 0 to 1 scale, one-hot encoding, and extracting year, month, or day from a date
 - Undo for every action, plus a running action history
+- Reset to the original upload (needs a confirmation tick, and Undo brings your cleaned version back)
 - Download the cleaned data as CSV and a plain-English summary report as a text file
 
 ### AI Analyst
@@ -208,10 +212,7 @@ smartwrangle/
 These are planned, not built:
 
 - Logins, usage limits, and payments, so the app can run as a hosted service
-- Treat placeholder words like "ERROR", "UNKNOWN", "N/A", or -1 as missing values
-- Pull numbers out of text, for example "93 min" or "$137K-$171K"
-- Reset to the original upload in one click
-- A general column type converter (text to number or date)
+- A general column type converter (text to date)
 - Box plots in the chart builder
 - PDF report
 - Support for older `.xls` Excel files

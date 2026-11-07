@@ -49,8 +49,10 @@ from engine.cleaner  import (
     rename_column, log_transform, standard_scale, minmax_scale,
     one_hot_encode, extract_date_part, get_cleaning_suggestions,
     numeric_conversion_preview, convert_to_numeric,
+    find_placeholders, placeholder_selected_by_default, blank_placeholders,
+    EXTRACT_METHODS, extract_number_preview, extract_number,
 )
-from engine.detector import get_columns_of_type, detect_column_types
+from engine.detector import get_columns_of_type, detect_column_types, count_unreadable_dates
 from engine.quality  import score_dataset
 
 # Utility modules
@@ -68,8 +70,8 @@ def _show_undo_bar():
     df      = st.session_state.working_df
     history = st.session_state.get("version_history", [])
 
-    # Two columns: left for undo, right for dataset summary
-    col_undo, col_status = st.columns([1, 3])
+    # Three columns: undo, reset to original, and the dataset summary
+    col_undo, col_reset, col_status = st.columns([1, 1, 2])
 
     with col_undo:
         # Disable the button if there's nothing to undo
@@ -100,6 +102,38 @@ def _show_undo_bar():
                 # Add to the action log
                 st.session_state.cleaning_log.append(f"↩ Undid last action")
                 st.rerun()   # refresh the page to show updated data
+
+    with col_reset:
+        # ── Reset to the original upload ───────────────────────────────────────
+        # Needs a tick first so it cannot be clicked by accident.
+        # It is saved like any other action, so Undo brings the cleaned
+        # version back.
+        # reset_round is added to the checkbox's key. Adding 1 after a reset
+        # draws a fresh, unticked checkbox (Streamlit does not allow changing a
+        # checkbox's value after it is drawn).
+        reset_round = st.session_state.get("reset_round", 0)
+        confirm = st.checkbox("I want to start over", key=f"reset_confirm_{reset_round}")
+        if st.button(
+            "⟲ Reset to Original",
+            disabled=not confirm,
+            width="stretch",
+            key="reset_btn",
+        ):
+            original = st.session_state.original_df.copy()
+            restored = original.copy()
+            # Re-read the date columns exactly the way the first upload did.
+            # detect_column_types() converts dates inside `restored`, and
+            # count_unreadable_dates() compares it with `original` to recount
+            # the bad-date warning for the Understand tab.
+            col_types = detect_column_types(restored)
+            st.session_state.date_warnings = count_unreadable_dates(original, restored, col_types)
+            # Fresh, unticked confirmation box next time
+            st.session_state.reset_round = reset_round + 1
+            # Save a snapshot, swap in the original, log it, refresh
+            _apply_action(
+                restored,
+                "⟲ Reset to the original upload. Use Undo to bring back your cleaned version."
+            )
 
     with col_status:
         # Show a simple "current state" summary
@@ -215,6 +249,11 @@ def _render_suggested_actions(df: pd.DataFrame, col_types: dict):
                     new_df, msg = drop_missing_rows(df, col)
                 elif op == "log_transform":
                     new_df, msg = log_transform(df, col)
+                elif op == "blank_placeholders":
+                    # Same default choices the tool below starts with
+                    chosen = [(p["column"], p["key"]) for p in find_placeholders(df)
+                              if placeholder_selected_by_default(p)]
+                    new_df, msg = blank_placeholders(df, chosen)
                 else:
                     st.warning(f"Operation '{op}' not yet implemented.")
                     return
@@ -312,6 +351,52 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 type="primary"
             ):
                 new_df, msg = remove_duplicates(df)
+                _apply_action(new_df, msg)
+
+    # ── Mark placeholder values as blank ───────────────────────────────────────
+    with st.expander("🚫 Mark Placeholder Values as Blank"):
+        st.caption(
+            "Some files type a word like ERROR, UNKNOWN or N/A (or the code -1) "
+            "into a cell instead of leaving it empty. Turning these into real blanks "
+            "makes the missing-value counts honest, and lets number columns convert."
+        )
+        found = find_placeholders(df)
+        if not found:
+            st.success("No placeholder values found.")
+        else:
+            # One option per (column, placeholder) pair. The option itself is the
+            # pair, which does not change; the count is only in the display text.
+            # (If the count were part of the option, any other cleaning step that
+            # changed a count would make Streamlit forget what was ticked.)
+            by_pair = {(p["column"], p["key"]): p for p in found}
+            defaults = [pair for pair, p in by_pair.items() if placeholder_selected_by_default(p)]
+            picked = st.multiselect(
+                "Which values should become blank?",
+                options=list(by_pair),
+                default=defaults,
+                format_func=lambda pair: (
+                    f"'{by_pair[pair]['shown_as']}' in {pair[0]} "
+                    f"({by_pair[pair]['count']:,} cells)"
+                ),
+                key="ph_pick",
+            )
+            # Explain why some options start unticked
+            if any(p["is_number"] for p in found):
+                st.caption(
+                    "**-1 is not selected by default.** Some systems use it for "
+                    "\"missing\", but in other data it is a real number. Select it "
+                    "only if -1 cannot be a real value in that column."
+                )
+            if any(not p["is_number"] and p["count"] == 1 for p in found):
+                st.caption(
+                    "Words that appear only once are not selected by default, "
+                    "because they may be real data (for example, a movie titled "
+                    "\"Unknown\")."
+                )
+            n_cells = sum(by_pair[pair]["count"] for pair in picked)
+            if st.button(f"Mark {n_cells:,} value(s) as blank", key="clean_ph",
+                         disabled=not picked):
+                new_df, msg = blank_placeholders(df, list(picked))
                 _apply_action(new_df, msg)
 
     # ── Fill missing values ────────────────────────────────────────────────────
@@ -545,6 +630,52 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             if st.button("Convert to numbers", key="clean_currency",
                          disabled=not can_convert):
                 new_df, msg = convert_to_numeric(df, col_cc)
+                _apply_action(new_df, msg)
+
+    # ── Pull numbers out of text ───────────────────────────────────────────────
+    with st.expander("🔍 Pull Numbers Out of Text"):
+        st.caption(
+            "For values with words around the number, like '93 min', '4 Seasons' or "
+            "'\\$137K-\\$171K (Glassdoor est.)'. The numbers go into a NEW column, so "
+            "the original stays as it is."
+        )
+        text_cols = [
+            c for c in all_cols
+            if pd.api.types.is_string_dtype(df[c]) or df[c].dtype == object
+        ]
+        if not text_cols:
+            st.info("No text columns found.")
+        else:
+            col_xn = st.selectbox("Column", text_cols, key="xn_col")
+            method = st.radio(
+                "Which number?",
+                options=list(EXTRACT_METHODS),
+                # Show the explanation. The backslash before $ stops Streamlit from
+                # reading "$137K-$171K" as a math formula.
+                format_func=lambda m: EXTRACT_METHODS[m].replace("$", "\\$"),
+                key="xn_method",
+            )
+            use_suffix = st.checkbox(
+                "Read K as thousand and M as million (137K -> 137,000)",
+                value=True, key="xn_suffix",
+            )
+
+            # ── Preview: what WOULD happen (nothing is changed yet) ───────────
+            p = extract_number_preview(df, col_xn, method, use_suffix)
+            st.dataframe(sanitize_for_display(p["examples"]), hide_index=True, width="stretch")
+            if p["n_found"] == 0:
+                st.error(f"No numbers were found in '{col_xn}'. Nothing will be changed.")
+            elif p["n_none"]:
+                st.warning(
+                    f"{p['n_found']:,} of {p['n_filled']:,} values contain a number. "
+                    f"{p['n_none']:,} have none and will be blank in the new column."
+                )
+            else:
+                st.success(f"All {p['n_filled']:,} filled values contain a number.")
+
+            if st.button("Pull numbers into a new column", key="clean_xn",
+                         disabled=p["n_found"] == 0):
+                new_df, msg = extract_number(df, col_xn, method, use_suffix)
                 _apply_action(new_df, msg)
 
 

@@ -40,6 +40,7 @@ import pandas as pd      # for dataframe operations
 # Engine modules — the logic lives here, not in the tab
 from engine.detector import get_columns_of_type, plain_english_type, generate_column_recommendations
 from engine.quality  import score_dataset, get_quality_report, get_column_health_table
+from engine.cleaner  import find_placeholders
 
 # Utility — sanitize before displaying any DataFrame
 from utils.sanitizer import sanitize_for_display
@@ -257,6 +258,25 @@ def render_understand_tab():
         # Render each finding as a colored card
         st.markdown(
             f'<div class="{css_class}">{finding["message"]}</div>',
+            unsafe_allow_html=True
+        )
+
+    # ── Placeholder values (ERROR, UNKNOWN, N/A, -1 ...) ───────────────────────
+    # These look like real values, so the missing-value count above does not
+    # include them. Point them out and send the user to the tool that fixes them.
+    placeholders = find_placeholders(df)
+    if placeholders:
+        n_ph   = sum(p["count"] for p in placeholders)
+        n_cols = len({p["column"] for p in placeholders})
+        shown  = sorted({p["shown_as"] for p in placeholders})[:4]
+        st.markdown(
+            f'<div class="finding-warning">'
+            f"{n_ph:,} placeholder value(s) such as "
+            f"{', '.join(repr(html.escape(s)) for s in shown)} were found in "
+            f"{n_cols} column(s). They may stand for missing data but are not counted "
+            f"as missing yet. Use <strong>Mark Placeholder Values as Blank</strong> "
+            f"in the Clean &amp; Export tab to review them."
+            f"</div>",
             unsafe_allow_html=True
         )
 

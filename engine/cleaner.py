@@ -61,11 +61,13 @@ How to use this file
 """
 
 # ── Imports ────────────────────────────────────────────────────────────────────
+# re          : finds numbers inside text (Pull Numbers Out of Text)
 # pandas      : for working with DataFrames (tables of data)
 # numpy       : for math operations like log transformation
 # StandardScaler, MinMaxScaler : from scikit-learn — used to rescale numbers
 #   StandardScaler : makes a column have mean=0 and standard deviation=1
 #   MinMaxScaler   : compresses a column into the range [0, 1]
+import re
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -557,6 +559,137 @@ def rename_column(
     return new_df, log_message
 
 
+# ── Placeholder values ─────────────────────────────────────────────────────────
+# Real files often type a word or code into a cell instead of leaving it empty.
+# These look like real values, so they hide from the missing-value counts and
+# stop number columns from converting. The functions below find them and can
+# turn them into true blanks.
+
+# Words that usually mean "no value here". Matching ignores capital letters
+# and outer spaces, so "Error", " ERROR " and "error" all match "error".
+PLACEHOLDER_WORDS = [
+    "error", "unknown", "n/a", "na", "#n/a", "null", "none", "nan",
+    "-", "--", "?", "missing", "not available",
+]
+
+# A number code that some systems use for "missing". It is NOT blanked by
+# default, because in other data -1 is a real value (a score change, a temperature).
+PLACEHOLDER_NUMBER = "-1"
+
+
+def _placeholder_key(series: pd.Series) -> pd.Series:
+    """
+    Turn every value into a lowercase, trimmed text "key" for matching.
+    Blank cells stay blank so they are never counted as placeholders.
+    Number columns become text too, so -1 and -1.0 both turn into "-1".
+    """
+    if pd.api.types.is_numeric_dtype(series):
+        # -1.0 becomes "-1"; other numbers become text that will not match
+        key = series.map(lambda v: "-1" if v == -1 else str(v))
+    else:
+        key = series.astype(str).str.strip().str.lower()
+    return key.where(series.notna())
+
+
+def find_placeholders(df: pd.DataFrame) -> list:
+    """
+    List every placeholder value found in the dataset.
+
+    Returns
+    -------
+    list of dicts, one per (column, placeholder) pair, largest count first:
+        column      str    The column name
+        key         str    The matched placeholder in lowercase ("error", "-1")
+        shown_as    str    How it most often appears in the file ("ERROR")
+        count       int    How many cells hold it
+        is_number   bool   True for -1 (not selected by default in the app)
+    """
+    found = []
+    targets = set(PLACEHOLDER_WORDS) | {PLACEHOLDER_NUMBER}
+
+    for col in df.columns:
+        series = df[col]
+        # Dates and True/False columns cannot hold placeholder text
+        if pd.api.types.is_datetime64_any_dtype(series) or pd.api.types.is_bool_dtype(series):
+            continue
+
+        key = _placeholder_key(series)
+        hits = key[key.isin(targets)]
+        if hits.empty:
+            continue
+
+        for k, count in hits.value_counts().items():
+            # The spelling used most often in the file, for display
+            shown = series[key == k].astype(str).str.strip().mode()
+            found.append({
+                "column":    col,
+                "key":       k,
+                "shown_as":  shown.iloc[0] if len(shown) else k,
+                "count":     int(count),
+                "is_number": k == PLACEHOLDER_NUMBER,
+            })
+
+    found.sort(key=lambda d: d["count"], reverse=True)
+    return found
+
+
+def placeholder_selected_by_default(item: dict) -> bool:
+    """
+    Decide whether a found placeholder starts out ticked in the app.
+
+    Ticked:     words (ERROR, UNKNOWN, N/A ...) that appear 2 or more times
+                in the column. A real placeholder usually repeats.
+    Not ticked: -1, because it is often a real number, and any word that
+                appears only once, because it may be real data. (The
+                Netflix file has a movie actually titled "Unknown".)
+    """
+    return (not item["is_number"]) and item["count"] >= 2
+
+
+def blank_placeholders(df: pd.DataFrame, selections: list) -> tuple:
+    """
+    Turn the chosen placeholder values into true blank cells.
+
+    Parameters
+    ----------
+    df         : pd.DataFrame   The current working dataset.
+    selections : list           (column, key) pairs from find_placeholders(),
+                                for example [("Item", "error"), ("Rating", "-1")]
+
+    Returns
+    -------
+    tuple of (new_df, log_message)
+    """
+    if not selections:
+        return df.copy(), "No placeholder values were selected, so nothing was changed."
+
+    new_df = df.copy()
+    total = 0
+    columns_changed = set()
+
+    for col, k in selections:
+        if col not in new_df.columns:
+            continue
+        mask = _placeholder_key(new_df[col]) == k     # cells holding this placeholder
+        n = int(mask.sum())
+        if n:
+            # Whole-number columns cannot hold blanks in pandas, so switch
+            # them to decimal numbers first (5 becomes 5.0; values unchanged).
+            if pd.api.types.is_integer_dtype(new_df[col]):
+                new_df[col] = new_df[col].astype(float)
+            new_df.loc[mask, col] = np.nan            # make them truly blank
+            total += n
+            columns_changed.add(col)
+
+    if total == 0:
+        return df.copy(), "No matching placeholder values were found, so nothing was changed."
+
+    return new_df, (
+        f"Marked {total:,} placeholder value(s) as blank in "
+        f"{len(columns_changed)} column(s). They now count as missing values."
+    )
+
+
 # ── Text or currency to numbers ────────────────────────────────────────────────
 
 def _parse_numbers(series: pd.Series) -> pd.Series:
@@ -639,6 +772,131 @@ def convert_to_numeric(df: pd.DataFrame, column_name: str) -> tuple:
         log_message += (
             f" {preview['n_lost']:,} value(s) could not be read and are now blank."
         )
+    return new_df, log_message
+
+
+# ── Pull numbers out of text ───────────────────────────────────────────────────
+# For values like "93 min", "4 Seasons" or "$137K-$171K (Glassdoor est.)",
+# where the converter above correctly refuses because there is extra text.
+
+# One number inside text, with three parts:
+#   (-?)            an optional minus sign, only when it is not glued to a word
+#                   or digit before it, so the "-" in "137-171" is a range
+#                   dash, not a negative sign
+#   (\d[\d,]*(?:\.\d+)?)   the digits, allowing commas and a decimal part
+#   ([kK]|M)(?![A-Za-z])   an optional K (thousand) or capital M (million) right
+#                   after the number, only when no other letter follows, so
+#                   "93 min" is not 93 million. Lowercase m is left alone because
+#                   it usually means minutes or meters ("10m 30s").
+_NUMBER_PATTERN = re.compile(r"(?<![\w.])(-?)(\d[\d,]*(?:\.\d+)?)((?:[kK]|M)(?![A-Za-z]))?")
+
+# What each method does, shown in the app
+EXTRACT_METHODS = {
+    "first":   "First number   ('93 min' -> 93)",
+    "average": "Average of a range   ('$137K-$171K' -> 154,000)",
+    "last":    "Last number   ('Season 1 of 4' -> 4)",
+}
+
+
+def _numbers_in(text, use_suffix: bool) -> list:
+    """Return every number found in one value, as floats."""
+    numbers = []
+    for minus, digits, suffix in _NUMBER_PATTERN.findall(str(text)):
+        value = float(digits.replace(",", ""))           # "1,250" -> 1250.0
+        if use_suffix and suffix:
+            value *= 1_000 if suffix.lower() == "k" else 1_000_000
+        numbers.append(-value if minus else value)
+    return numbers
+
+
+def _extract(series: pd.Series, method: str, use_suffix: bool) -> pd.Series:
+    """Apply the chosen method to every cell. No number found -> blank."""
+    def pick(value):
+        """Return the one number this cell should become, or blank."""
+        if pd.isna(value):
+            return np.nan                                  # blank stays blank
+        nums = _numbers_in(value, use_suffix)
+        if not nums:
+            return np.nan                                  # text with no number
+        if method == "first":
+            return nums[0]
+        if method == "last":
+            return nums[-1]
+        return sum(nums[:2]) / len(nums[:2])               # average of a range
+    return series.map(pick).astype(float)
+
+
+def extract_number_preview(df: pd.DataFrame, column_name: str,
+                           method: str, use_suffix: bool = True) -> dict:
+    """
+    Show what pulling numbers out of a column WOULD give, without changing it.
+
+    Returns
+    -------
+    dict with keys:
+        examples   pd.DataFrame   Up to 5 different values: before and after
+        n_filled   int            Cells that have a value now
+        n_found    int            Of those, how many contain a number
+        n_none     int            Of those, how many have no number (will be blank)
+    """
+    original = df[column_name]
+    result   = _extract(original, method, use_suffix)
+    filled   = original.notna()
+
+    # 5 different example values, so the user sees the variety in the column
+    sample = original.dropna().drop_duplicates().head(5)
+    examples = pd.DataFrame({
+        "Original value":  sample.astype(str).values,
+        "Number":          _extract(sample, method, use_suffix).values,
+    })
+    return {
+        "examples": examples,
+        "n_filled": int(filled.sum()),
+        "n_found":  int((filled & result.notna()).sum()),
+        "n_none":   int((filled & result.isna()).sum()),
+    }
+
+
+def extract_number(df: pd.DataFrame, column_name: str,
+                   method: str, use_suffix: bool = True) -> tuple:
+    """
+    Pull a number out of each text value into a NEW column.
+
+    The original column is kept unchanged, like the other preparation tools.
+    The new column is named '<column>_number' ('<column>_number_2' if taken).
+
+    Parameters
+    ----------
+    method     : "first", "average" or "last" (see EXTRACT_METHODS)
+    use_suffix : True reads K as thousand and M as million
+
+    Returns
+    -------
+    tuple of (new_df, log_message)
+    """
+    if column_name not in df.columns:
+        return df.copy(), f"Column '{column_name}' not found."
+    if method not in EXTRACT_METHODS:
+        return df.copy(), f"Unknown method '{method}'."
+
+    preview = extract_number_preview(df, column_name, method, use_suffix)
+    if preview["n_found"] == 0:
+        return df.copy(), f"No numbers were found in '{column_name}', so nothing was changed."
+
+    # Pick a column name that is not already used
+    new_col, n = f"{column_name}_number", 2
+    while new_col in df.columns:
+        new_col, n = f"{column_name}_number_{n}", n + 1
+
+    new_df = df.copy()
+    new_df[new_col] = _extract(df[column_name], method, use_suffix)
+
+    log_message = (
+        f"Pulled numbers out of '{column_name}' into new column '{new_col}' "
+        f"({preview['n_found']:,} values, method: {method})."
+    )
+    if preview["n_none"]:
+        log_message += f" {preview['n_none']:,} value(s) had no number and are blank."
     return new_df, log_message
 
 
@@ -1031,6 +1289,26 @@ def get_cleaning_suggestions(df: pd.DataFrame, col_types: dict) -> list:
             "issue":     f"{n_dups:,} duplicate rows found ({dup_pct}% of your data).",
             "action":    "Remove duplicate rows",
             "operation": "remove_duplicates",
+            "column":    None,
+        })
+
+    # ── Check for placeholder values (ERROR, UNKNOWN, N/A ...) ────────────────
+    # Listed before missing values because blanking placeholders changes the
+    # missing-value counts. Only the default-ticked ones are counted here, so
+    # the one-click fix never touches -1 or one-off words.
+    default_placeholders = [p for p in find_placeholders(df) if placeholder_selected_by_default(p)]
+    if default_placeholders:
+        n_ph   = sum(p["count"] for p in default_placeholders)
+        n_cols = len({p["column"] for p in default_placeholders})
+        words  = sorted({p["shown_as"] for p in default_placeholders})[:3]
+        suggestions.append({
+            "priority":  1,
+            "issue": (
+                f"{n_ph:,} placeholder values like {', '.join(repr(w) for w in words)} "
+                f"in {n_cols} column(s) are hiding missing data."
+            ),
+            "action":    "Mark placeholder values as blank",
+            "operation": "blank_placeholders",
             "column":    None,
         })
 
