@@ -41,6 +41,15 @@ xlrd==2.0.2
 plotly==7.1.0
 
 
+# ── PDF report ───────────────────────────────────────────────
+# matplotlib redraws the report's charts as images. (Plotly
+# images would need Google Chrome, which Streamlit Cloud lacks.)
+matplotlib==3.11.2
+
+# fpdf2 builds the PDF file itself. Pure Python, no system setup.
+fpdf2==2.8.9
+
+
 # ── Machine learning / preprocessing ─────────────────────────
 # scikit-learn provides StandardScaler and MinMaxScaler,
 # used by the "Preparation for Analysis" tools.

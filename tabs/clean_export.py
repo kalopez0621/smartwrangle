@@ -22,7 +22,8 @@ Structure of this tab
                              plain-English descriptions and expandable forms.
     3. Transformation Tools  Log scale, scaling, encoding — explained simply.
     4. Action History        A log of everything that has been done so far.
-    5. Export                Download cleaned CSV + text summary report.
+    5. Export                Download cleaned CSV, a text summary report,
+                             and a PDF report with charts.
 
 The undo system
 ---------------
@@ -62,6 +63,7 @@ from engine.quality  import score_dataset
 # Utility modules
 from utils.sanitizer import sanitize_for_display
 from utils.exporter  import df_to_csv_bytes, build_summary_report, report_to_bytes, get_export_filename
+from utils.pdf_report import build_pdf_report
 
 
 def _show_undo_bar():
@@ -995,6 +997,54 @@ def render_clean_export_tab():
     # ── Report preview ─────────────────────────────────────────────────────────
     with st.expander("Preview Report", expanded=False):
         st.text(report_text)
+
+    # ── PDF report ─────────────────────────────────────────────────────────────
+    # Built only when the user clicks, because drawing the charts takes a
+    # second or two. The finished file is kept in session state together with
+    # a "fingerprint" of the data, so the app can tell when the data has
+    # changed since the PDF was made.
+    st.markdown("**PDF Report**")
+    st.caption(
+        "A printable report to share: before and after numbers, findings, the "
+        "automatic charts with their headlines, key numbers, and every cleaning step."
+    )
+
+    try:
+        # One number that changes whenever any value in the table changes
+        data_print = int(pd.util.hash_pandas_object(df, index=True).sum())
+    except Exception:
+        data_print = id(df)        # rare data types cannot be hashed; fall back
+    fingerprint = (st.session_state.get("loaded_file_id"), data_print, len(cleaning_log))
+
+    if st.button("Create PDF report", key="make_pdf"):
+        with st.spinner("Building your PDF report..."):
+            try:
+                pdf_bytes = build_pdf_report(
+                    st.session_state.original_df,
+                    df,
+                    col_types,
+                    cleaning_log,
+                    dataset_name=st.session_state.get("dataset_name", "Dataset"),
+                    date_warnings=st.session_state.get("date_warnings", {}),
+                )
+                st.session_state.pdf_report = {"fingerprint": fingerprint, "bytes": pdf_bytes}
+            except Exception as error:
+                st.error(f"The PDF report could not be created: {error}")
+
+    saved_pdf = st.session_state.get("pdf_report")
+    if saved_pdf and saved_pdf["fingerprint"] == fingerprint:
+        st.download_button(
+            label="Download PDF Report",
+            data=saved_pdf["bytes"],
+            file_name=get_export_filename("smartwrangle_report", "pdf"),
+            mime="application/pdf",
+            key="download_pdf",
+        )
+    elif saved_pdf:
+        st.caption(
+            "Your data has changed since the last PDF was made. "
+            "Click Create PDF report again for an up-to-date copy."
+        )
 
 
 # ── END OF FILE ────────────────────────────────────────────────────────────────

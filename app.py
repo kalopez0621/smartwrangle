@@ -158,6 +158,17 @@ st.markdown("""
         border-radius: 8px;
         font-weight: 600;
     }
+    /* Keep download buttons blue on hover and when clicked or focused.
+       Without this, Streamlit's light-gray hover color replaced the blue
+       while the text stayed white, so the label disappeared. */
+    [data-testid="stDownloadButton"] button:hover,
+    [data-testid="stDownloadButton"] button:focus,
+    [data-testid="stDownloadButton"] button:focus-visible,
+    [data-testid="stDownloadButton"] button:active {
+        background: #2563eb;
+        color: white;
+        border-color: #2563eb;
+    }
 
     /* Sidebar styling */
     [data-testid="stSidebar"] {
@@ -318,6 +329,7 @@ with st.sidebar:
                 "quality_result", "insights_cache",
                 "cleaning_log", "version_history", "dataset_name",
                 "analyst_history", "loaded_file_id", "date_warnings",
+                "pdf_report",
             ]
             for key in keys_to_clear:
                 if key in st.session_state:

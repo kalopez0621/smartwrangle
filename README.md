@@ -18,7 +18,7 @@ SmartWrangle is a guided data cleaning and exploration app. You upload a CSV or 
 |---|---|---|
 | **Understand** | What is in my data? | A quality score out of 100, row and column counts, missing values, duplicates, column types, and plain-English findings |
 | **Discover** | What does my data show? | Charts picked automatically for your data, each with a one-sentence headline, plus a chart builder |
-| **Clean & Export** | How do I fix it? | Suggested fixes with one-click buttons, cleaning and preparation tools, full undo, and downloads |
+| **Clean & Export** | How do I fix it? | Suggested fixes with one-click buttons, cleaning and preparation tools, full undo, and downloads (cleaned CSV, text summary, and PDF report) |
 | **AI Analyst** | What should I do next? | Ask questions in plain English. Claude answers using a summary of your data (never the raw rows) |
 
 No data science background is needed. Every finding and every tool is explained in plain language.
@@ -86,6 +86,7 @@ No data science background is needed. Every finding and every tool is explained 
 - Undo for every action, plus a running action history
 - Reset to the original upload (needs a confirmation tick, and Undo brings your cleaned version back)
 - Download the cleaned data as CSV and a plain-English summary report as a text file
+- Download a PDF report to share: before and after numbers, findings, the automatic charts with their headlines, key numbers, and every cleaning step
 
 ### AI Analyst
 - Ask questions about your dataset and get answers that reference your actual columns and findings
@@ -185,7 +186,8 @@ smartwrangle/
 │   └── analyst.py
 ├── utils/
 │   ├── sanitizer.py        # Makes tables safe to display; tidies column names
-│   └── exporter.py         # CSV download and summary report
+│   ├── exporter.py         # CSV download and text summary report
+│   └── pdf_report.py       # PDF report with charts
 ├── test_data/              # Messy test file and the script that builds it
 └── docs/screenshots/       # Images used in this README
 ```
@@ -200,9 +202,10 @@ smartwrangle/
 |---|---|
 | App framework | Streamlit 1.65 |
 | Data | pandas 3, NumPy |
-| Charts | Plotly |
+| Charts | Plotly (in the app), matplotlib (in the PDF report) |
 | Scaling | scikit-learn |
 | Excel files | openpyxl (.xlsx), xlrd (.xls) |
+| PDF report | fpdf2 |
 | AI Analyst | Anthropic API (Claude Haiku 5.5), python-dotenv |
 | Language | Python 3.12 (also runs on 3.13) |
 
@@ -213,7 +216,6 @@ smartwrangle/
 These are planned, not built:
 
 - Logins, usage limits, and payments, so the app can run as a hosted service
-- PDF report
 
 ---
 
