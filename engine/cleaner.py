@@ -153,6 +153,32 @@ def undo_last_action(version_history: list) -> tuple:
     return restored_df, version_history, success_message
 
 
+# ── Text helper ────────────────────────────────────────────────────────────────
+
+def _text_only(series: pd.Series, text_func) -> pd.Series:
+    """
+    Apply a text operation (strip, title, lower, upper) to the filled cells
+    of a column and leave blank cells blank.
+
+    Why this exists: series.astype(str) turns a blank cell (NaN) into the
+    text "nan" on some column types. That hides the blank from the missing
+    value count and creates a fake "nan" category in charts.
+
+    Parameters
+    ----------
+    series    : pd.Series   The column to change.
+    text_func : function    Takes a text Series and returns the changed Series,
+                            for example  lambda s: s.str.strip()
+
+    Returns
+    -------
+    pd.Series with the change applied and the blank cells untouched.
+    """
+    is_blank = series.isna()                       # True where the cell is empty
+    changed  = text_func(series.astype(str))       # change every cell as text
+    return changed.where(~is_blank, series)        # put the original blanks back
+
+
 # ── Cleaning operations ────────────────────────────────────────────────────────
 # Each function below:
 #   - Takes the current working DataFrame as input
@@ -296,6 +322,14 @@ def fill_missing(
     if n_missing == 0:
         return df.copy(), f"'{column_name}' has no missing values — nothing to fill."
 
+    # Safety check: mean and median need numbers. On a text column they
+    # raise an error, so return a friendly message instead of crashing.
+    if strategy in ("mean", "median") and not pd.api.types.is_numeric_dtype(df[column_name]):
+        return df.copy(), (
+            f"'{column_name}' is a text column, so it cannot be filled with the "
+            f"{strategy}. Use the most common value or a constant instead."
+        )
+
     # Work on a copy so we never modify the original
     new_df = df.copy()
 
@@ -420,8 +454,10 @@ def trim_whitespace(df: pd.DataFrame, column_name: str) -> tuple:
     new_df = df.copy()
 
     # Convert to string first (in case any values are not already strings)
-    # .str.strip() removes leading and trailing whitespace
-    new_df[column_name] = new_df[column_name].astype(str).str.strip()
+    # .str.strip() removes leading and trailing whitespace.
+    # _text_only() keeps blank cells blank. Without it, astype(str) can
+    # turn a blank cell into the 4-letter text "nan".
+    new_df[column_name] = _text_only(new_df[column_name], lambda s: s.str.strip())
 
     log_message = (
         f"Trimmed extra whitespace from all values in '{column_name}'."
@@ -463,15 +499,16 @@ def standardize_text_case(
 
     new_df = df.copy()
 
-    # Apply the requested case transformation using pandas string methods
+    # Apply the requested case transformation using pandas string methods.
+    # _text_only() keeps blank cells blank (see trim_whitespace above).
     if case == "title":
-        new_df[column_name] = new_df[column_name].astype(str).str.title()
+        new_df[column_name] = _text_only(new_df[column_name], lambda s: s.str.title())
         case_desc = "Title Case"
     elif case == "lower":
-        new_df[column_name] = new_df[column_name].astype(str).str.lower()
+        new_df[column_name] = _text_only(new_df[column_name], lambda s: s.str.lower())
         case_desc = "lowercase"
     else:
-        new_df[column_name] = new_df[column_name].astype(str).str.upper()
+        new_df[column_name] = _text_only(new_df[column_name], lambda s: s.str.upper())
         case_desc = "UPPERCASE"
 
     log_message = (

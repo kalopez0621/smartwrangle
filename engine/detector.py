@@ -56,14 +56,42 @@ def _has_keyword(col_name: str, keyword_list: list) -> bool:
 
 
 def _try_convert_datetime(series: pd.Series) -> pd.Series | None:
+    """
+    Try to turn a text column into real dates.
+
+    Step 1 reads every value as YYYY-MM-DD (fast and unambiguous).
+    Step 2 re-reads only the values Step 1 could not, one by one, in
+    whatever format each one uses (MM/DD/YYYY, "March 5, 2024", etc.).
+
+    Before Step 2 existed, a column that was mostly YYYY-MM-DD lost every
+    value written another way: those valid dates silently became blanks.
+
+    Values that still cannot be read (like "not a date" or "2024-02-30")
+    become blank (NaT). app.py counts them and warns the user.
+
+    Returns the converted column if at least 70% of rows are dates,
+    otherwise None (the column is left as text).
+    """
     try:
+        # Step 1: the standard ISO format
         converted = pd.to_datetime(series, format="%Y-%m-%d", errors="coerce")
 
-        if converted.notna().mean() < 0.5:
+        # Step 2: values that had text but did not match Step 1.
+        # .str.strip() removes stray spaces, which real files often have.
+        # format="mixed" reads each value on its own; month comes before
+        # day (US style), so 01/02/2024 is January 2.
+        leftover = series.notna() & converted.isna()
+        if leftover.any():
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                converted = pd.to_datetime(series, errors="coerce")
+                retry = pd.to_datetime(
+                    series[leftover].astype(str).str.strip(),
+                    format="mixed",
+                    errors="coerce",
+                )
+            converted.loc[leftover] = retry
 
+        # Only treat the column as dates if most rows are real dates
         if converted.notna().mean() >= 0.70:
             return converted
 

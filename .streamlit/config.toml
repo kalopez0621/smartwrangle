@@ -43,9 +43,9 @@ font = "sans serif"
 # the local behavior match the deployed behavior.
 maxUploadSize = 200
 
-# Disable CORS checking for local development.
-# Set to false for production if you add authentication.
-enableCORS = false
+# CORS is left at Streamlit's safe default (on), so other websites
+# cannot talk to this app. An earlier version turned it off, which
+# Streamlit warns is unsafe for a public app.
 
 # Enable XSRF protection. Keep true for any public-facing app.
 enableXsrfProtection = true

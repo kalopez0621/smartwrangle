@@ -125,9 +125,14 @@ def _build_system_prompt(df, col_types: dict, quality_result: dict) -> str:
     )
 
     # ── Quality findings ───────────────────────────────────────────────────────
-    findings = quality_result.get("findings", [])
+    # score_dataset() does not store sentences under a "findings" key, so the
+    # old code always told the AI "No issues found." get_quality_report() turns
+    # the score result into the same plain-English findings shown on the
+    # Understand tab, so the AI now sees the real problems.
+    from engine.quality import get_quality_report
+    findings = [f["message"] for f in get_quality_report(quality_result)]
     findings_text = (
-        "\n".join(f"  - {f}" for f in findings[:6])
+        "\n".join(f"  - {f}" for f in findings[:8])   # cap at 8 to keep the prompt short
         if findings else "  - No issues found."
     )
 
@@ -331,16 +336,22 @@ def render_analyst_tab():
                         "content": answer
                     })
 
-                except anthropic.AuthenticationError:
-                    st.error(
-                        "Invalid API key. Check your ANTHROPIC_API_KEY in secrets."
-                    )
-                except anthropic.RateLimitError:
-                    st.error(
-                        "Rate limit reached. Wait a moment and try again."
-                    )
                 except Exception as e:
-                    st.error(f"API error: {str(e)}")
+                    # The question got no answer, so take it back out of the
+                    # history. Otherwise the next call would send two questions
+                    # in a row with no answer between them.
+                    st.session_state.analyst_history.pop()
+
+                    # Show a plain-English message for the most common errors
+                    if isinstance(e, anthropic.AuthenticationError):
+                        st.error(
+                            "Invalid API key. Check ANTHROPIC_API_KEY in your "
+                            ".env file or Streamlit secrets."
+                        )
+                    elif isinstance(e, anthropic.RateLimitError):
+                        st.error("Rate limit reached. Wait a moment and try again.")
+                    else:
+                        st.error(f"API error: {str(e)}")
 
     # ── Clear conversation button ──────────────────────────────────────────────
     if history:

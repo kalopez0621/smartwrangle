@@ -86,6 +86,11 @@ def _show_undo_bar():
                 st.session_state.working_df    = restored
                 st.session_state.version_history = new_history
 
+                # Re-detect column types for the restored data. Without this,
+                # undoing (for example) a one-hot encode left the old column
+                # list in place and the dropdowns no longer matched the data.
+                st.session_state.col_types = detect_column_types(restored)
+
                 # Clear cached results so they recalculate with new data
                 for key in ["quality_result", "insights_cache"]:
                     if key in st.session_state:
@@ -347,13 +352,29 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 strategy_key = "mode" if strategy.startswith("mode") else "drop_rows"
                 const_val = None
             else:
-                # Non-date columns get the full set of options
+                # Median and mean only make sense for number columns.
+                # Offering them for a text column crashed the app, so text
+                # columns only get mode (most common value) and constant.
+                if pd.api.types.is_numeric_dtype(df[col_fm]):
+                    fill_options = [
+                        "median — middle value (best for numbers with outliers)",
+                        "mean — average value",
+                        "mode — most common value (best for categories)",
+                        "constant — a value you choose",
+                    ]
+                else:
+                    fill_options = [
+                        "mode — most common value (best for categories)",
+                        "constant — a value you choose",
+                    ]
+                    st.caption(
+                        "This is a text column, so median and mean are not offered. "
+                        "If it holds numbers stored as text, use "
+                        "**Convert Currency to Numeric** first."
+                    )
                 strategy = st.selectbox(
                     "Fill method",
-                    ["median — middle value (best for numbers with outliers)",
-                     "mean — average value",
-                     "mode — most common value (best for categories)",
-                     "constant — a value you choose"],
+                    fill_options,
                     key="fm_strategy"
                 )
                 # Extract just the strategy keyword before the " —" description

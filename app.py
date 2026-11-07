@@ -174,6 +174,18 @@ st.markdown("""
         color: #e2e8f0 !important;
     }
 
+    /* Sidebar buttons ("Upload a different file").
+       The rule above makes button text light, but Streamlit draws the
+       button with a white background, so the text was nearly invisible.
+       A dark background with a thin border makes it readable again. */
+    [data-testid="stSidebar"] .stButton button {
+        background: #1e293b !important;
+        border: 1px solid #475569 !important;
+    }
+    [data-testid="stSidebar"] .stButton button:hover {
+        border-color: #60a5fa !important;
+    }
+
     /* Markdown paragraphs and bold text */
     [data-testid="stSidebar"] .stMarkdown p,
     [data-testid="stSidebar"] .stMarkdown strong {
@@ -189,7 +201,7 @@ st.markdown("""
 
     /* File uploader box — white background so text is always legible */
     [data-testid="stSidebar"] [data-testid="stFileUploader"] {
-        background: ##1e293b;
+        background: #1e293b;
         border: 1px solid #334155;
         border-radius: 10px;
         padding: 4px;
@@ -252,10 +264,19 @@ with st.sidebar:
     # type=["csv","xlsx"] restricts to spreadsheet files.
     # When a file is uploaded, this returns a file-like object.
     # When nothing is uploaded, it returns None.
+    #
+    # key= gives the uploader a name. "Upload a different file" changes
+    # that name by adding 1 to uploader_version, which makes Streamlit draw
+    # a brand-new, empty uploader. Without this, the old file stayed in the
+    # uploader and was loaded again right after clicking the button.
+    if "uploader_version" not in st.session_state:
+        st.session_state.uploader_version = 0
+
     uploaded_file = st.file_uploader(
         "Upload your dataset",
         type=["csv", "xlsx"],
-        help="Supported formats: CSV (.csv) and Excel (.xlsx)"
+        help="Supported formats: CSV (.csv) and Excel (.xlsx)",
+        key=f"uploader_{st.session_state.uploader_version}",
     )
 
     st.markdown("---")
@@ -285,14 +306,18 @@ with st.sidebar:
         # Reset button — lets the user upload a different file
         if st.button("Upload a different file", width='stretch'):
             # Clear all session state keys related to the current dataset
+            # analyst_history is included so the AI chat starts fresh
             keys_to_clear = [
                 "original_df", "working_df", "col_types",
                 "quality_result", "insights_cache",
-                "cleaning_log", "version_history", "dataset_name"
+                "cleaning_log", "version_history", "dataset_name",
+                "analyst_history", "loaded_file_id", "date_warnings",
             ]
             for key in keys_to_clear:
                 if key in st.session_state:
                     del st.session_state[key]
+            # Swap in a new, empty uploader (see the uploader comment above)
+            st.session_state.uploader_version += 1
             # st.rerun() triggers a full page refresh
             st.rerun()
 
@@ -303,17 +328,18 @@ with st.sidebar:
 
 # ── File loading ────────────────────────────────────────────────────────────────
 # This block runs every time a file is uploaded (or re-uploaded).
-# We check if the uploaded file is different from the one already loaded
-# by comparing filenames — if they match, we skip re-loading to avoid
-# resetting the user's cleaning work.
+# We check if the uploaded file is different from the one already loaded.
+# If it is the same upload, we skip re-loading so the user's cleaning
+# work is not reset on every click.
 
 if uploaded_file is not None:
 
-    # Has this specific file already been loaded?
-    # We compare the filename to avoid reloading on every rerun.
+    # Has this specific upload already been loaded?
+    # Streamlit gives every upload its own file_id. Comparing the id (not
+    # the filename) means a new file that happens to have the same name as
+    # the old one, such as an updated "data.csv", is still loaded.
     already_loaded = (
-        "dataset_name" in st.session_state and
-        st.session_state.dataset_name == os.path.splitext(uploaded_file.name)[0]
+        st.session_state.get("loaded_file_id") == uploaded_file.file_id
     )
 
     if not already_loaded:
@@ -354,9 +380,17 @@ if uploaded_file is not None:
                 # 'None' stored as a category in those columns. This sanitizer
                 # removes that artifact on every file load before anything else
                 # in the app reads the data.
-                # We only check object (text) columns — numeric and datetime
+                # We only check text columns — numeric and datetime
                 # columns are never affected.
-                for _col in raw_df.select_dtypes(include="object").columns:
+                # pandas 3 stores text as its own "str" type, so we check each
+                # column directly instead of select_dtypes("object"), which
+                # pandas has warned will stop including text columns.
+                _text_cols = [
+                    c for c in raw_df.columns
+                    if pd.api.types.is_string_dtype(raw_df[c])
+                    or raw_df[c].dtype == object
+                ]
+                for _col in _text_cols:
                     if (raw_df[_col] == "None").any():
                         raw_df[_col] = raw_df[_col].replace("None", pd.NA)
 
@@ -381,6 +415,23 @@ if uploaded_file is not None:
                 # dtype == "object", which caused date columns to never convert.
                 col_types = detect_column_types(working_df)
 
+                # ── Count values that could not be read as dates ───────────────
+                # When a text column is turned into dates, any value that is
+                # not a real date (like "not a date" or "2024-02-30") becomes
+                # blank. We count those so the Understand tab can warn the
+                # user instead of the values disappearing silently.
+                # Saved as {column: (how many, up to 3 example values)}.
+                date_warnings = {}
+                for _col, _type in col_types.items():
+                    if _type != "date_column":
+                        continue
+                    # Had a value in the file, but is blank after converting
+                    _lost = raw_df[_col].notna() & working_df[_col].isna()
+                    if _lost.any():
+                        _examples = raw_df.loc[_lost, _col].astype(str).unique()[:3]
+                        date_warnings[_col] = (int(_lost.sum()), list(_examples))
+                st.session_state.date_warnings = date_warnings
+
                 # ── Save everything to session state ───────────────────────────
                 st.session_state.working_df      = working_df
                 st.session_state.col_types       = col_types
@@ -389,9 +440,13 @@ if uploaded_file is not None:
                 st.session_state.dataset_name    = (
                     os.path.splitext(uploaded_file.name)[0]
                 )
+                # Remember which upload this is (see already_loaded above)
+                st.session_state.loaded_file_id  = uploaded_file.file_id
 
                 # ── Clear any cached analysis from a previous file ─────────────
-                for key in ["quality_result", "insights_cache"]:
+                # analyst_history is cleared too, so the AI chat about the old
+                # file does not carry over to the new one.
+                for key in ["quality_result", "insights_cache", "analyst_history"]:
                     if key in st.session_state:
                         del st.session_state[key]
 

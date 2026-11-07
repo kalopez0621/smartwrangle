@@ -33,6 +33,7 @@ How to add this tab to app.py
 """
 
 # ── Imports ────────────────────────────────────────────────────────────────────
+import html              # escapes text from the file before showing it as HTML
 import streamlit as st   # the web app framework — all UI elements come from here
 import pandas as pd      # for dataframe operations
 
@@ -256,6 +257,22 @@ def render_understand_tab():
         # Render each finding as a colored card
         st.markdown(
             f'<div class="{css_class}">{finding["message"]}</div>',
+            unsafe_allow_html=True
+        )
+
+    # ── Values that could not be read as dates ─────────────────────────────────
+    # app.py fills date_warnings when the file loads: for each date column,
+    # how many values were not real dates and were left blank, plus examples.
+    # html.escape() makes sure odd text in the file cannot break the page.
+    for col, (n_bad, examples) in st.session_state.get("date_warnings", {}).items():
+        example_text = ", ".join(f"'{html.escape(e)}'" for e in examples)
+        st.markdown(
+            f'<div class="finding-warning">'
+            f"{n_bad:,} value(s) in '{html.escape(col)}' could not be read as dates "
+            f"and are now blank (for example: {example_text}). "
+            f"The original file is unchanged. Use the Clean & Export tab to fill "
+            f"or remove these rows."
+            f"</div>",
             unsafe_allow_html=True
         )
 
