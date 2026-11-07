@@ -13,7 +13,8 @@ Its job is to:
     3. Handle file uploads — load the data, detect column types,
        initialize session state
     4. Show the landing screen when no file is uploaded
-    5. Show the three-tab interface when a file IS uploaded
+    5. Show the four-tab interface when a file IS uploaded
+       (Understand, Discover, Clean & Export, AI Analyst)
     6. Route each tab to its corresponding render function
 
 This file contains NO analysis logic — that all lives in the engine/
@@ -29,6 +30,10 @@ Session state managed here
     cleaning_log     list of plain-English action strings
     version_history  list of df snapshots for undo
     dataset_name     filename shown in the report header
+    loaded_file_id   id of the upload currently loaded (detects a new file)
+    uploader_version number added to the uploader's key; +1 empties it
+    date_warnings    {column: (count, examples)} of values that were not dates
+    analyst_history  the AI Analyst conversation (cleared for each new file)
 
 How Streamlit reruns work
 --------------------------

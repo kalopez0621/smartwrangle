@@ -557,6 +557,91 @@ def rename_column(
     return new_df, log_message
 
 
+# ── Text or currency to numbers ────────────────────────────────────────────────
+
+def _parse_numbers(series: pd.Series) -> pd.Series:
+    """
+    Read text like "$2,350.00", "(75.50)" or " 7 " as numbers.
+
+    Steps:
+        1. Treat every value as text and remove outer spaces.
+        2. Note accounting negatives: (2,350.00) means -2,350.00.
+        3. Remove currency symbols, commas, spaces and parentheses.
+        4. Put the minus sign back on the accounting negatives.
+        5. Convert to numbers. Anything still not a number becomes blank.
+
+    Cells that were already blank stay blank.
+    """
+    text = series.astype(str).str.strip()                                  # step 1
+    is_negative = text.str.startswith("(") & text.str.endswith(")")        # step 2
+    text = text.str.replace(r"[\$,€£¥\s()]", "", regex=True)               # step 3
+    text = text.where(~is_negative, "-" + text)                            # step 4
+    numbers = pd.to_numeric(text, errors="coerce")                         # step 5
+    return numbers.where(series.notna())                                   # keep blanks blank
+
+
+def numeric_conversion_preview(df: pd.DataFrame, column_name: str) -> dict:
+    """
+    Check what converting a column to numbers WOULD do, without changing it.
+
+    The Clean & Export tab shows this before the user clicks Convert, so a
+    column like "93 min" or "$137K-$171K" is not wiped out by surprise.
+
+    Returns
+    -------
+    dict with keys:
+        n_filled   int    Cells that have a value now
+        n_ok       int    Of those, how many can be read as numbers
+        n_lost     int    Of those, how many would become blank
+        examples   list   Up to 3 values that cannot be read as numbers
+    """
+    original = df[column_name]
+    numbers  = _parse_numbers(original)
+    filled   = original.notna()
+    lost     = filled & numbers.isna()          # had a value, would become blank
+    return {
+        "n_filled": int(filled.sum()),
+        "n_ok":     int((filled & numbers.notna()).sum()),
+        "n_lost":   int(lost.sum()),
+        "examples": original[lost].astype(str).unique()[:3].tolist(),
+    }
+
+
+def convert_to_numeric(df: pd.DataFrame, column_name: str) -> tuple:
+    """
+    Convert a text or currency column into real numbers.
+
+    Use numeric_conversion_preview() first to see how many values would
+    become blank. This function does the conversion and reports the same
+    numbers in its log message.
+
+    Returns
+    -------
+    tuple of (new_df, log_message)
+    """
+    if column_name not in df.columns:
+        return df.copy(), f"Column '{column_name}' not found."
+
+    preview = numeric_conversion_preview(df, column_name)
+
+    # Safety net: never wipe out a whole column
+    if preview["n_ok"] == 0:
+        return df.copy(), (
+            f"'{column_name}' was not converted: none of its values can be "
+            f"read as numbers."
+        )
+
+    new_df = df.copy()
+    new_df[column_name] = _parse_numbers(df[column_name])
+
+    log_message = f"Converted '{column_name}' to numbers ({preview['n_ok']:,} values)."
+    if preview["n_lost"]:
+        log_message += (
+            f" {preview['n_lost']:,} value(s) could not be read and are now blank."
+        )
+    return new_df, log_message
+
+
 # ── Transformation operations ──────────────────────────────────────────────────
 # Transformations change the VALUES in a column, not the structure of the data.
 # They are mainly used to prepare data for statistical modeling.

@@ -48,6 +48,7 @@ from engine.cleaner  import (
     drop_missing_rows, trim_whitespace, standardize_text_case,
     rename_column, log_transform, standard_scale, minmax_scale,
     one_hot_encode, extract_date_part, get_cleaning_suggestions,
+    numeric_conversion_preview, convert_to_numeric,
 )
 from engine.detector import get_columns_of_type, detect_column_types
 from engine.quality  import score_dataset
@@ -482,11 +483,12 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             new_df, msg = rename_column(df, col_rn, new_rn)
             _apply_action(new_df, msg)
 
-    # ── Convert Currency / Text to Numeric ────────────────────────────────────
-    with st.expander("💰 Convert Currency to Numeric"):
+    # ── Convert Text or Currency to Numbers ───────────────────────────────────
+    with st.expander("💰 Convert Text or Currency to Numbers"):
         st.caption(
-            "Convert currency-formatted text (like $2,350.00) into real numeric values "
-            "so charts, scaling, and modeling tools can use them."
+            "Turn numbers stored as text (like 7, $2,350.00, or (75.50)) into real "
+            "numbers so charts, scaling, and modeling tools can use them. "
+            "You will see how many values convert before anything changes."
         )
 
         # Only show object/text columns
@@ -505,39 +507,45 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             )
 
             preview_values = df[col_cc].dropna().astype(str).head(5).tolist()
-            st.caption(f"Sample values: {preview_values}")
+            # Escape $ so currency samples are not read as math formulas
+            st.caption(f"Sample values: {preview_values}".replace("$", "\\$"))
 
-            if st.button("Convert to numeric", key="clean_currency"):
+            # ── Preview: what WOULD happen (nothing is changed yet) ───────────
+            # Before this check existed, converting a column like "93 min"
+            # turned every value into a blank with no warning.
+            p = numeric_conversion_preview(df, col_cc)
+            # A backslash before $ stops Streamlit from reading "$...$" as a
+            # math formula, so values like '$137K-$171K' display correctly.
+            examples = ", ".join(f"'{e}'" for e in p["examples"]).replace("$", "\\$")
+            can_convert = False
 
-                # Step 1 — convert to plain strings and strip whitespace
-                cleaned_series = df[col_cc].astype(str).str.strip()
-
-                # Step 2 — detect accounting-format negatives BEFORE stripping
-                # ($2,350.00) means NEGATIVE $2,350 in standard accounting notation
-                is_negative = (
-                    cleaned_series.str.startswith("(") &
-                    cleaned_series.str.endswith(")")
+            if p["n_ok"] == 0:
+                # Nothing can be read as a number: block the conversion
+                st.error(
+                    f"None of the {p['n_filled']:,} values in '{col_cc}' can be read "
+                    f"as numbers (for example: {examples}), so converting would "
+                    f"blank out the whole column. Nothing will be changed."
                 )
-
-                # Step 3 — strip currency symbols, commas, spaces, parentheses
-                cleaned_series = cleaned_series.str.replace(
-                    r"[\$,€£¥\s()]", "", regex=True
+            elif p["n_lost"] > 0:
+                # Some values would be lost: make the user confirm first
+                st.warning(
+                    f"{p['n_ok']:,} of {p['n_filled']:,} values will become numbers. "
+                    f"{p['n_lost']:,} cannot be read as numbers and will become blank "
+                    f"(for example: {examples})."
                 )
-
-                # Step 4 — restore the minus sign on rows that had parentheses
-                cleaned_series = cleaned_series.where(
-                    ~is_negative,
-                    "-" + cleaned_series
+                can_convert = st.checkbox(
+                    f"I understand {p['n_lost']:,} value(s) will become blank",
+                    key="cc_confirm",
                 )
+            else:
+                st.success(f"All {p['n_filled']:,} filled values can be converted.")
+                can_convert = True
 
-                # Step 5 — convert to float; non-parseable values become NaN
-                new_df = df.copy()
-                new_df[col_cc] = pd.to_numeric(cleaned_series, errors="coerce")
-
-                _apply_action(
-                    new_df,
-                    f"Converted '{col_cc}' from currency/text to numeric."
-                )
+            # The button stays greyed out until it is safe (or confirmed)
+            if st.button("Convert to numbers", key="clean_currency",
+                         disabled=not can_convert):
+                new_df, msg = convert_to_numeric(df, col_cc)
+                _apply_action(new_df, msg)
 
 
 def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
