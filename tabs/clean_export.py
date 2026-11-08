@@ -221,6 +221,30 @@ def _render_suggested_actions(df: pd.DataFrame, col_types: dict):
 
     st.markdown(f"**{len(suggestions)} suggestion(s) found:**")
 
+    # Let the button text wrap onto more lines instead of being cut off
+    # with "...". The CSS only targets buttons inside the container below
+    # (Streamlit gives a container with key="X" the CSS class "st-key-X"),
+    # the same way the AI Analyst tab does it.
+    st.markdown("""
+    <style>
+        .st-key-suggested_actions button p {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+        }
+        .st-key-suggested_actions button {
+            height: auto !important;
+            min-height: 2.5rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    with st.container(key="suggested_actions"):
+        _render_suggestion_rows(df, suggestions)
+
+
+def _render_suggestion_rows(df: pd.DataFrame, suggestions: list):
+    """Draw one row per suggestion: the issue on the left, its fix button on the right."""
     for i, s in enumerate(suggestions):
         # Color-code by priority
         if s["priority"] == 1:
@@ -255,6 +279,8 @@ def _render_suggested_actions(df: pd.DataFrame, col_types: dict):
                     new_df, msg = drop_missing_rows(df, col)
                 elif op == "log_transform":
                     new_df, msg = log_transform(df, col)
+                elif op == "convert_to_numeric":
+                    new_df, msg = convert_to_numeric(df, col)
                 elif op == "blank_placeholders":
                     # Same default choices the tool below starts with
                     chosen = [(p["column"], p["key"]) for p in find_placeholders(df)

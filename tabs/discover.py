@@ -43,11 +43,25 @@ How to add this tab to app.py
 import streamlit as st          # web app framework
 import pandas as pd             # dataframe operations
 import numpy as np              # math and statistics
+import re                       # escaping $ signs in on-screen text
 import plotly.express as px     # chart library
 
 from engine.insights  import generate_all_insights
 from engine.detector  import get_columns_of_type
 from utils.sanitizer  import sanitize_for_display
+
+
+def _md_safe(text: str) -> str:
+    """
+    Make text safe to show with st.markdown, st.caption, or a widget label.
+
+    Streamlit reads two $ signs in one line as a math formula, so
+    "$44.80 ... $83.73" turns into red, garbled text. Putting a backslash
+    in front of each $ ("\\$") tells Streamlit to show a plain dollar sign.
+    A $ that already has a backslash is left alone, so nothing gets
+    escaped twice.
+    """
+    return re.sub(r"(?<!\\)\$", r"\\$", str(text))
 
 
 def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
@@ -69,19 +83,19 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
 
     # ── Headline and detail sentence ──────────────────────────────────────────
     # The headline is shown large above the chart — this is the key finding
-    st.markdown(f"#### {insight['headline']}")
+    st.markdown(f"#### {_md_safe(insight['headline'])}")
 
     # The detail sentence provides one more level of context
     if insight.get("detail"):
-        st.caption(insight["detail"])
+        st.caption(_md_safe(insight["detail"]))
 
     # ── Financial comparison (bonus line for segment insights) ────────────────
     if insight.get("fin_comparison"):
-        st.caption(f"💰 {insight['fin_comparison']}")
+        st.caption(f"💰 {_md_safe(insight['fin_comparison'])}")
 
     # ── Footnote for filtered dates ───────────────────────────────────────────
     if insight.get("footnote"):
-        st.caption(f"ℹ {insight['footnote']}")
+        st.caption(f"ℹ {_md_safe(insight['footnote'])}")
 
     # ── Chart rendering ───────────────────────────────────────────────────────
     chart_type = insight["chart_type"]
@@ -148,8 +162,21 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
             # Fallback: use the first two columns
             cat_col, count_col = cols[0], cols[1]
 
-        # Sort by count descending for readability
-        data_sorted = data.sort_values(count_col, ascending=True)
+        # Plotly draws bottom to top, so ascending order puts the biggest bar on top.
+        data_sorted = data.copy()
+        data_sorted[cat_col] = data_sorted[cat_col].astype(str)
+
+        # When the categories are numbers stored as text (like Quantity:
+        # "1", "2", "10"), list them in number order instead of by count,
+        # so the chart reads like a count of each value. Text that is not a
+        # number (like "seven") goes to the end.
+        as_numbers = pd.to_numeric(data_sorted[cat_col], errors="coerce")
+        if as_numbers.notna().mean() >= 0.8:
+            data_sorted["__order__"] = as_numbers.fillna(np.inf)
+            data_sorted = data_sorted.sort_values("__order__", ascending=False)
+            data_sorted = data_sorted.drop(columns="__order__")
+        else:
+            data_sorted = data_sorted.sort_values(count_col, ascending=True)
 
         # Add percentage labels to the bars
         total = data_sorted[count_col].sum()
@@ -170,14 +197,23 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
             title="",
         )
 
-        fig.update_traces(textposition="outside")
+        # cliponaxis=False lets a label stick out past the last gridline.
+        fig.update_traces(textposition="outside", cliponaxis=False)
         fig.update_layout(
             showlegend=False,
             coloraxis_showscale=False,
             plot_bgcolor="white",
-            margin=dict(t=10, b=40, l=10, r=10),
+            margin=dict(t=10, b=40, l=10, r=40),
             xaxis_title="",
             yaxis_title="",
+            # Stretch the axis 25% past the longest bar so its
+            # "47 (22.6%)" label has room and is not cut off.
+            xaxis=dict(range=[0, data_sorted[count_col].max() * 1.25]),
+            # type="category" stops Plotly from treating "1", "2", "10" as a
+            # number line (which only labeled every other bar). dtick=1 shows
+            # a label on every bar.
+            yaxis=dict(type="category", dtick=1, automargin=True),
+            height=max(260, 34 * len(data_sorted) + 80),
         )
 
         st.plotly_chart(fig, width="stretch", key=f"bar_{index}")
@@ -196,20 +232,23 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
         if is_extreme:
             # Show a checkbox to toggle the cap on/off
             # key= must be unique per chart — we use the column name and index
+            # _md_safe() keeps the two $ signs from being read as a formula
             cap_chart = st.checkbox(
-                f"Cap chart at 99th percentile "
-                f"(${p99:,.0f}) for readability — max value is ${max_val:,.0f}",
+                _md_safe(
+                    f"Cap chart at 99th percentile "
+                    f"(${p99:,.0f}) for readability — max value is ${max_val:,.0f}"
+                ),
                 value=True,
                 key=f"hist_cap_{col_name}_{index}"
             )
             if cap_chart:
                 plot_data = col_data[col_data <= p99]
                 n_excluded = len(col_data) - len(plot_data)
-                st.caption(
+                st.caption(_md_safe(
                     f"Showing {len(plot_data):,} of {len(col_data):,} values. "
                     f"{n_excluded:,} values above ${p99:,.0f} are not shown here. "
                     f"They are real — use the Explorer below to see the full range."
-                )
+                ))
             else:
                 plot_data = col_data
         else:

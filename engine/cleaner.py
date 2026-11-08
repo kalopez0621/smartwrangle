@@ -1496,6 +1496,34 @@ def get_cleaning_suggestions(df: pd.DataFrame, col_types: dict) -> list:
             "column":    None,
         })
 
+    # ── Check for numbers or money stored as text ─────────────────────────────
+    # A column like Amount ("$1,094.88") cannot be added up or charted until
+    # it is converted. The one-click fix is only offered when every filled
+    # value can be read as a number, so the button never blanks out data.
+    # Columns where some values would be lost (like "seven" in Quantity) are
+    # left to the Convert tool, which shows those values and asks first.
+    from engine.detector import infer_expected_type
+    for col in df.columns:
+        if col_types.get(col) not in ("categorical", "high_cardinality"):
+            continue
+        expected = infer_expected_type(df[col])
+        if expected not in ("metric", "financial"):
+            continue
+        preview = numeric_conversion_preview(df, col)
+        if preview["n_ok"] == 0 or preview["n_lost"] > 0:
+            continue
+        kind_text = "money amounts" if expected == "financial" else "numbers"
+        suggestions.append({
+            "priority":  1,
+            "issue": (
+                f"'{col}' holds {kind_text} stored as text, so it cannot be "
+                f"added up or charted."
+            ),
+            "action":    f"Convert '{col}' to numbers",
+            "operation": "convert_to_numeric",
+            "column":    col,
+        })
+
     # ── Check for missing values per column ───────────────────────────────────
     for col in df.columns:
         n_missing = int(df[col].isnull().sum())

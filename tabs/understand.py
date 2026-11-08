@@ -241,7 +241,8 @@ def render_understand_tab():
     st.markdown("### Data Findings")
     st.caption(
         "SmartWrangle checked your data for common issues. "
-        "Green means no problem. Yellow means something to keep in mind."
+        "Green means no problem. Yellow means something to keep in mind. "
+        "Red means a problem worth fixing first."
     )
 
     # Get the plain-English findings from quality.py
@@ -310,13 +311,22 @@ def render_understand_tab():
 
         for rec in recommendations:
 
-            message = (
-                f"<strong>{rec['column']}</strong> detected as "
-                f"{plain_english_type(rec['detected'])} "
-                f"but appears to behave like "
-                f"{plain_english_type(rec['expected'])}.<br><br>"
-                f"{rec['recommendation']}"
-            )
+            col_label = html.escape(str(rec["column"]))
+            if rec.get("kind", "type") == "type":
+                # The two type opinions disagree: say what each one is
+                message = (
+                    f"<strong>{col_label}</strong> detected as "
+                    f"{plain_english_type(rec['detected'])} "
+                    f"but appears to behave like "
+                    f"{plain_english_type(rec['expected'])}.<br><br>"
+                    f"{html.escape(rec['recommendation'])}"
+                )
+            else:
+                # Mostly empty or only one value: the types are not the issue
+                message = (
+                    f"<strong>{col_label}</strong>: "
+                    f"{html.escape(rec['recommendation'])}"
+                )
 
             # Use warning style to match your design language
             st.markdown(
@@ -331,10 +341,11 @@ def render_understand_tab():
     st.caption("The first 10 rows of your dataset.")
 
     # Always sanitize before displaying — prevents Arrow serialization errors
-    st.dataframe(
-        sanitize_for_display(df.head(10)),
-        width="stretch",
-    )
+    # Streamlit shows empty cells as "None". For this preview, turn every
+    # value into text and show empty cells as blank instead.
+    preview = sanitize_for_display(df.head(10))
+    preview = preview.astype(object).where(preview.notna(), "").astype(str)
+    st.dataframe(preview, width="stretch")
 
     # ── SECTION 6: Advanced Details (collapsed by default) ────────────────────
     # st.expander() creates a collapsible section

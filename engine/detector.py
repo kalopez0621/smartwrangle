@@ -383,7 +383,11 @@ def generate_column_recommendations(
 
     Returns
     -------
-    list of dicts with keys: column, detected, expected, recommendation
+    list of dicts with keys: column, detected, expected, recommendation, kind
+        kind is "type" when the detected and value-based types disagree,
+        "missing" for a mostly empty column, and "single" for a column
+        with one value. The Understand tab only says "detected as X but
+        behaves like Y" for kind "type".
     """
     recommendations = []
 
@@ -393,11 +397,19 @@ def generate_column_recommendations(
         expected = infer_expected_type(df[col])        # type from the values only
 
         rec_text = None
+        kind = "type"
 
         # ── Type disagreements ───────────────────────────────────────────────
         if detected != expected:
 
-            if detected == "categorical" and expected in ("metric", "financial"):
+            if detected in ("categorical", "high_cardinality") and expected == "financial":
+                rec_text = (
+                    "Values look like money amounts (like $1,234.50) but are stored "
+                    "as text, so they cannot be added up or charted. Use Convert Text "
+                    "or Currency to Numbers in the Clean & Export tab."
+                )
+
+            elif detected in ("categorical", "high_cardinality") and expected == "metric":
                 rec_text = (
                     "Values appear numeric but are stored as text. Use "
                     "Convert Text or Currency to Numbers in the Clean & Export tab."
@@ -428,17 +440,23 @@ def generate_column_recommendations(
                 f"Column is {round(missing_pct,1)}% missing. "
                 "Consider filling or removing."
             )
+            kind = "missing"
 
         # ── Columns with a single value ──────────────────────────────────────
         if df[col].nunique() <= 1:
-            rec_text = "Column has only one unique value. Consider removing."
+            rec_text = (
+                "Every row has the same value, so this column cannot show any "
+                "differences. You could remove it."
+            )
+            kind = "single"
 
         if rec_text:
             recommendations.append({
                 "column": col,
                 "detected": detected,
                 "expected": expected,
-                "recommendation": rec_text
+                "recommendation": rec_text,
+                "kind": kind,
             })
 
     return recommendations

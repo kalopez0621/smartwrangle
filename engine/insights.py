@@ -76,6 +76,15 @@ SCORE_KEYWORDS = [
     "rate", "ratio", "pct", "percent", "percentage"
 ]
 
+# Words that mean a column holds a price or rate PER item, hour, or unit.
+# Adding these up across records gives a meaningless number (the "total
+# unit price" of 200 orders is not a real amount), so the Discover tab
+# leads with the typical value for these columns instead of the total.
+PER_UNIT_KEYWORDS = [
+    "price", "rate", "per ", "per_", "unit", "hourly", "wage",
+    "avg", "average", "mean"
+]
+
 # The earliest date we consider plausible.
 # Any date before this is likely a data entry error.
 PLAUSIBLE_DATE_MIN = pd.Timestamp("2000-01-01")
@@ -584,10 +593,29 @@ def _insight_financial(
         # Is there an extreme outlier?
         is_extreme = p99 > 0 and max_val > p99 * 10
 
+        # Is this a price or rate per unit? (see PER_UNIT_KEYWORDS)
+        is_per_unit = any(kw in fin_col.lower() for kw in PER_UNIT_KEYWORDS)
+
         # Write a headline based on the most notable pattern
-        if mostly_zero:
+        if is_per_unit and not mostly_zero:
+            # A per-unit price: the typical value is the useful number.
             headline = (
-                f"{zero_pct:.0f}% of {fin_col} values are $0 — "
+                f"A typical {fin_col} is {_format_value(median, fin_col)}."
+            )
+            if is_extreme:
+                detail = (
+                    f"Most values are close to that, but a few are far higher "
+                    f"(the largest is {_format_value(max_val, fin_col)}), which pulls "
+                    f"the average up to {_format_value(mean, fin_col)}."
+                )
+            else:
+                detail = (
+                    f"The average is {_format_value(mean, fin_col)}, and 99% of "
+                    f"values are below {_format_value(p99, fin_col)}."
+                )
+        elif mostly_zero:
+            headline = (
+                f"{zero_pct:.0f}% of {fin_col} values are \\$0 — "
                 f"meaning most records resulted in no payout."
             )
             detail = (
@@ -768,6 +796,14 @@ def _insight_high_cardinality_segment(
     Returns a list of insight dicts (one per high-cardinality column, max 2).
     """
     insights = []
+
+    # Text columns that are really numbers or money (like "$329.30") have
+    # almost one value per row, so a top-10 chart of them is nearly empty
+    # and tells the user nothing. Skip them here; the Understand and Clean
+    # & Export tabs suggest converting them to numbers instead.
+    from engine.detector import infer_expected_type
+    hc_cols = [c for c in hc_cols
+               if infer_expected_type(df[c]) not in ("metric", "financial")]
 
     # Limit to 2 high-cardinality columns to avoid overloading the tab
     for hc_col in hc_cols[:2]:
