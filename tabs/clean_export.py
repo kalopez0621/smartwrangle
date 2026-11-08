@@ -76,14 +76,35 @@ def _show_undo_bar():
     df      = st.session_state.working_df
     history = st.session_state.get("version_history", [])
 
-    # Three columns: undo, reset to original, and the dataset summary
-    col_undo, col_reset, col_status = st.columns([1, 1, 2])
+    # ── Current state of the data, on its own line above the buttons ─────────
+    orig_rows = len(st.session_state.original_df)
+    curr_rows = len(df)
+    removed   = orig_rows - curr_rows
+    missing   = int(df.isnull().sum().sum())
+
+    parts = [
+        f"**{curr_rows:,}** rows",
+        f"**{len(df.columns)}** columns",
+    ]
+    if removed > 0:
+        parts.append(f"**{removed:,}** rows removed from original")
+    if missing > 0:
+        parts.append(f"**{missing:,}** missing values remaining")
+    else:
+        parts.append(":green[:material/check_circle:] No missing values")
+
+    st.markdown("  ·  ".join(parts))
+
+    # ── One tidy row: Undo | start-over tick | Reset ─────────────────────────
+    # vertical_alignment="center" lines the checkbox up with the two buttons.
+    col_undo, col_confirm, col_reset = st.columns([1, 1, 1], vertical_alignment="center")
 
     with col_undo:
         # Disable the button if there's nothing to undo
         undo_disabled = len(history) == 0
         if st.button(
-            "↩ Undo Last Action",
+            "Undo Last Action",
+            icon=":material/undo:",
             disabled=undo_disabled,
             width="stretch",
             type="secondary",
@@ -106,21 +127,24 @@ def _show_undo_bar():
                         del st.session_state[key]
 
                 # Add to the action log
-                st.session_state.cleaning_log.append(f"↩ Undid last action")
+                st.session_state.cleaning_log.append("Undid the last action")
                 st.rerun()   # refresh the page to show updated data
 
-    with col_reset:
-        # ── Reset to the original upload ───────────────────────────────────────
-        # Needs a tick first so it cannot be clicked by accident.
-        # It is saved like any other action, so Undo brings the cleaned
-        # version back.
-        # reset_round is added to the checkbox's key. Adding 1 after a reset
-        # draws a fresh, unticked checkbox (Streamlit does not allow changing a
-        # checkbox's value after it is drawn).
-        reset_round = st.session_state.get("reset_round", 0)
+    # ── Reset to the original upload ───────────────────────────────────────────
+    # Needs a tick first so it cannot be clicked by accident.
+    # It is saved like any other action, so Undo brings the cleaned
+    # version back.
+    # reset_round is added to the checkbox's key. Adding 1 after a reset
+    # draws a fresh, unticked checkbox (Streamlit does not allow changing a
+    # checkbox's value after it is drawn).
+    reset_round = st.session_state.get("reset_round", 0)
+    with col_confirm:
         confirm = st.checkbox("I want to start over", key=f"reset_confirm_{reset_round}")
+
+    with col_reset:
         if st.button(
-            "⟲ Reset to Original",
+            "Reset to Original",
+            icon=":material/restart_alt:",
             disabled=not confirm,
             width="stretch",
             key="reset_btn",
@@ -138,28 +162,8 @@ def _show_undo_bar():
             # Save a snapshot, swap in the original, log it, refresh
             _apply_action(
                 restored,
-                "⟲ Reset to the original upload. Use Undo to bring back your cleaned version."
+                "Reset to the original upload. Use Undo to bring back your cleaned version."
             )
-
-    with col_status:
-        # Show a simple "current state" summary
-        orig_rows = len(st.session_state.original_df)
-        curr_rows = len(df)
-        removed   = orig_rows - curr_rows
-        missing   = int(df.isnull().sum().sum())
-
-        parts = [
-            f"**{curr_rows:,}** rows",
-            f"**{len(df.columns)}** columns",
-        ]
-        if removed > 0:
-            parts.append(f"**{removed:,}** rows removed from original")
-        if missing > 0:
-            parts.append(f"**{missing:,}** missing values remaining")
-        else:
-            parts.append("✅ No missing values")
-
-        st.markdown("  ·  ".join(parts))
 
 
 def _apply_action(new_df: pd.DataFrame, log_message: str):
@@ -197,7 +201,7 @@ def _apply_action(new_df: pd.DataFrame, log_message: str):
             del st.session_state[key]
 
     # Show a success message briefly at the top of the page
-    st.toast(log_message, icon="✅")
+    st.toast(log_message, icon=":material/check_circle:")
 
     # Rerun the page to show the updated dataset and recalculated stats
     st.rerun()
@@ -215,7 +219,8 @@ def _render_suggested_actions(df: pd.DataFrame, col_types: dict):
 
     if not suggestions:
         st.success(
-            "✅ No issues detected. Your data looks clean and ready to use."
+            "No issues detected. Your data looks clean and ready to use.",
+            icon=":material/check_circle:",
         )
         return
 
@@ -248,11 +253,11 @@ def _render_suggestion_rows(df: pd.DataFrame, suggestions: list):
     for i, s in enumerate(suggestions):
         # Color-code by priority
         if s["priority"] == 1:
-            icon = "🔴"   # urgent
+            icon = ":red[:material/error:]"       # urgent
         elif s["priority"] == 2:
-            icon = "🟡"   # moderate
+            icon = ":orange[:material/warning:]"  # moderate
         else:
-            icon = "🔵"   # optional
+            icon = ":blue[:material/info:]"       # optional
 
         # Show the issue and a button to fix it
         col_issue, col_action = st.columns([3, 1])
@@ -309,7 +314,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
     date_cols    = get_columns_of_type(col_types, "date_column")
 
     # ── Remove duplicates ──────────────────────────────────────────────────────
-    with st.expander("🗑 Remove Duplicate Rows"):
+    with st.expander("Remove Duplicate Rows", icon=":material/content_copy:"):
         st.caption(
             "Preview the duplicate rows first, then decide whether to remove them. "
             "Keeps the first occurrence of each duplicate."
@@ -386,7 +391,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Mark placeholder values as blank ───────────────────────────────────────
-    with st.expander("🚫 Mark Placeholder Values as Blank"):
+    with st.expander("Mark Placeholder Values as Blank", icon=":material/block:"):
         st.caption(
             "Some files type a word like ERROR, UNKNOWN or N/A (or the code -1) "
             "into a cell instead of leaving it empty. Turning these into real blanks "
@@ -432,7 +437,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Fill missing values ────────────────────────────────────────────────────
-    with st.expander("🩹 Fill Missing Values"):
+    with st.expander("Fill Missing Values", icon=":material/format_color_fill:"):
         st.caption(
             "Replace empty cells with an estimated value. "
             "For numbers: use median (middle value) — it's less affected by extremes. "
@@ -519,7 +524,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Drop rows with missing values ──────────────────────────────────────────
-    with st.expander("✂ Remove Rows With Missing Values"):
+    with st.expander("Remove Rows With Missing Values", icon=":material/playlist_remove:"):
         st.caption(
             "Remove rows that have empty cells. "
             "Use this when you want to keep only complete records."
@@ -546,7 +551,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Drop column ────────────────────────────────────────────────────────────
-    with st.expander("🗂 Remove a Column"):
+    with st.expander("Remove a Column", icon=":material/view_column:"):
         st.caption(
             "Permanently remove a column you don't need. "
             "Common use: remove ID columns or columns with too many missing values."
@@ -558,7 +563,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             _apply_action(new_df, msg)
 
     # ── Trim whitespace ────────────────────────────────────────────────────────
-    with st.expander("✏ Fix Extra Spaces in Text"):
+    with st.expander("Fix Extra Spaces in Text", icon=":material/space_bar:"):
         st.caption(
             "Remove invisible spaces from the start and end of text values. "
             "These can cause the same category to appear as two different ones."
@@ -572,7 +577,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Standardize text case ──────────────────────────────────────────────────
-    with st.expander("🔡 Standardize Text Capitalization"):
+    with st.expander("Standardize Text Capitalization", icon=":material/text_fields:"):
         st.caption(
             "Make text consistent — e.g. 'american airlines', "
             "'AMERICAN AIRLINES', and 'American Airlines' all become the same."
@@ -592,7 +597,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Rename column ──────────────────────────────────────────────────────────
-    with st.expander("🏷 Rename a Column"):
+    with st.expander("Rename a Column", icon=":material/edit:"):
         st.caption("Give a column a cleaner, more readable name.")
         col_rn  = st.selectbox("Column to rename", all_cols, key="rn_col")
         new_rn  = st.text_input("New name", value=col_rn, key="rn_new")
@@ -601,7 +606,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             _apply_action(new_df, msg)
 
     # ── Convert Text or Currency to Numbers ───────────────────────────────────
-    with st.expander("💰 Convert Text or Currency to Numbers"):
+    with st.expander("Convert Text or Currency to Numbers", icon=":material/attach_money:"):
         st.caption(
             "Turn numbers stored as text (like 7, $2,350.00, or (75.50)) into real "
             "numbers so charts, scaling, and modeling tools can use them. "
@@ -667,7 +672,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
     # ── Convert text to dates ──────────────────────────────────────────────────
     # Date columns with date-like names are converted automatically on upload.
     # This tool covers the rest, and files that write the day before the month.
-    with st.expander("📅 Convert Text to Dates"):
+    with st.expander("Convert Text to Dates", icon=":material/calendar_month:"):
         st.caption(
             "Turn dates stored as text (like 03/05/2024 or March 5, 2024) into real "
             "dates, so time charts and Extract Year or Month can use them. "
@@ -740,7 +745,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Pull numbers out of text ───────────────────────────────────────────────
-    with st.expander("🔍 Pull Numbers Out of Text"):
+    with st.expander("Pull Numbers Out of Text", icon=":material/pin:"):
         st.caption(
             "For values with words around the number, like '93 min', '4 Seasons' or "
             "'\\$137K-\\$171K (Glassdoor est.)'. The numbers go into a NEW column, so "
@@ -801,7 +806,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
     date_cols    = get_columns_of_type(col_types, "date_column")
 
     # ── Log transform ──────────────────────────────────────────────────────────
-    with st.expander("📉 Compress Extreme Values (Log Scale)"):
+    with st.expander("Compress Extreme Values (Log Scale)", icon=":material/compress:"):
         st.caption(
             "When a column has a few very large values (like claim amounts in the millions), "
             "charts and models get distorted. Log scale compresses the range so everything "
@@ -816,7 +821,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Standard scale ─────────────────────────────────────────────────────────
-    with st.expander("⚖ Normalize for Modeling (Standard Scale)"):
+    with st.expander("Normalize for Modeling (Standard Scale)", icon=":material/balance:"):
         st.caption(
             "Rescales a column so it has an average of 0. "
             "Use this when preparing data for a machine learning model "
@@ -831,7 +836,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Min-max scale ──────────────────────────────────────────────────────────
-    with st.expander("📏 Scale to 0–1 Range (Min-Max Scale)"):
+    with st.expander("Scale to 0–1 Range (Min-Max Scale)", icon=":material/straighten:"):
         st.caption(
             "Compresses all values into the range 0 to 1. "
             "The smallest value becomes 0, the largest becomes 1. "
@@ -846,7 +851,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── One-hot encode ─────────────────────────────────────────────────────────
-    with st.expander("🔢 Convert Categories to Yes/No Columns (One-Hot Encode)"):
+    with st.expander("Convert Categories to Yes/No Columns (One-Hot Encode)", icon=":material/toggle_on:"):
         st.caption(
             "Turns a category column into multiple 0/1 columns — one per category. "
             "Required for most machine learning models, which can't use text directly. "
@@ -867,7 +872,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
                 _apply_action(new_df, msg)
 
     # ── Extract date part ──────────────────────────────────────────────────────
-    with st.expander("📅 Extract Year or Month From a Date"):
+    with st.expander("Extract Year or Month From a Date", icon=":material/event:"):
         st.caption(
             "Pull out just the year or month from a date column as a new number column. "
             "Useful for modeling — machine learning models can't use raw dates, "
@@ -910,7 +915,7 @@ def render_clean_export_tab():
     st.markdown("---")
 
     # ── SECTION 1: Suggested Actions ──────────────────────────────────────────
-    st.markdown("### 💡 Suggested Actions")
+    st.markdown("### :material/lightbulb: Suggested Actions")
     st.caption(
         "SmartWrangle found these issues in your data. "
         "Click a button to fix each one automatically."
@@ -920,7 +925,7 @@ def render_clean_export_tab():
     st.markdown("---")
 
     # ── SECTION 2: All Cleaning Tools ─────────────────────────────────────────
-    st.markdown("### 🧹 Cleaning Tools")
+    st.markdown("### :material/cleaning_services: Cleaning Tools")
     st.caption(
         "Click any section below to expand it and use that tool. "
         "Every action can be undone with the Undo button above."
@@ -930,7 +935,7 @@ def render_clean_export_tab():
     st.markdown("---")
 
     # ── SECTION 3: Transformation Tools ───────────────────────────────────────
-    st.markdown("### ⚙ Preparation for Analysis")
+    st.markdown("### :material/tune: Preparation for Analysis")
     st.caption(
         "These tools change the values in your columns to prepare them "
         "for charts and models. They always create a new column — "
@@ -941,7 +946,7 @@ def render_clean_export_tab():
     st.markdown("---")
 
     # ── SECTION 4: Action History ──────────────────────────────────────────────
-    st.markdown("### 📋 Action History")
+    st.markdown("### :material/history: Action History")
 
     cleaning_log = st.session_state.get("cleaning_log", [])
 
@@ -955,7 +960,7 @@ def render_clean_export_tab():
     st.markdown("---")
 
     # ── SECTION 5: Export ──────────────────────────────────────────────────────
-    st.markdown("### ⬇ Export Your Data")
+    st.markdown("### :material/download: Export Your Data")
     st.caption(
         "Download your cleaned dataset as a CSV file (opens in Excel or Google Sheets), "
         "or download a plain-English summary report of what was found and what was done."
@@ -970,7 +975,8 @@ def render_clean_export_tab():
             f"use the Suggested Actions or Cleaning Tools above."
         )
     else:
-        st.success("✅ No missing values — your data is ready to export.")
+        st.success("No missing values — your data is ready to export.",
+                   icon=":material/check_circle:")
 
     # ── Two download buttons side by side ─────────────────────────────────────
     col_csv, col_report = st.columns(2)
@@ -1042,7 +1048,28 @@ def render_clean_export_tab():
         data_print = id(df)        # rare data types cannot be hashed; fall back
     fingerprint = (st.session_state.get("loaded_file_id"), data_print, len(cleaning_log))
 
-    if st.button("Create PDF report", key="make_pdf"):
+    # The Create button gets the same blue look as the download buttons.
+    # Streamlit gives a button with key="make_pdf" the CSS class
+    # "st-key-make_pdf", so this style only touches this one button.
+    st.markdown("""
+    <style>
+        .st-key-make_pdf button {
+            background: #3b82f6; color: white; border-color: #3b82f6;
+            border-radius: 8px; font-weight: 600;
+        }
+        .st-key-make_pdf button:hover, .st-key-make_pdf button:focus,
+        .st-key-make_pdf button:focus-visible, .st-key-make_pdf button:active {
+            background: #2563eb; color: white; border-color: #2563eb;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Two columns, like the CSV and summary report buttons above:
+    # Create on the left, Download on the right once the PDF is ready.
+    col_make, col_get = st.columns(2)
+
+    if col_make.button("Create PDF report", key="make_pdf", width="stretch",
+                       icon=":material/picture_as_pdf:"):
         with st.spinner("Building your PDF report..."):
             try:
                 pdf_bytes = build_pdf_report(
@@ -1059,12 +1086,13 @@ def render_clean_export_tab():
 
     saved_pdf = st.session_state.get("pdf_report")
     if saved_pdf and saved_pdf["fingerprint"] == fingerprint:
-        st.download_button(
+        col_get.download_button(
             label="Download PDF Report",
             data=saved_pdf["bytes"],
             file_name=get_export_filename("smartwrangle_report", "pdf"),
             mime="application/pdf",
             key="download_pdf",
+            width="stretch",
         )
     elif saved_pdf:
         st.caption(

@@ -157,7 +157,7 @@ def require_login_for_ai() -> bool:
         return False
 
     if not is_logged_in():
-        st.markdown("### 🤖 AI Analyst")
+        st.markdown("### :material/auto_awesome: AI Analyst")
         st.info(
             "**Sign in with Google to use the AI Analyst.**\n\n"
             "Signing in reloads the page, so you will need to upload your "

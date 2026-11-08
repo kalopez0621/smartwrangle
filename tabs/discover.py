@@ -91,11 +91,11 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
 
     # ── Financial comparison (bonus line for segment insights) ────────────────
     if insight.get("fin_comparison"):
-        st.caption(f"💰 {_md_safe(insight['fin_comparison'])}")
+        st.caption(f":material/payments: {_md_safe(insight['fin_comparison'])}")
 
     # ── Footnote for filtered dates ───────────────────────────────────────────
     if insight.get("footnote"):
-        st.caption(f"ℹ {_md_safe(insight['footnote'])}")
+        st.caption(f":material/info: {_md_safe(insight['footnote'])}")
 
     # ── Chart rendering ───────────────────────────────────────────────────────
     chart_type = insight["chart_type"]
@@ -293,7 +293,7 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
     col_types : dict           Column types from detector.py.
     """
     st.markdown("---")
-    st.markdown("### 🔍 Explore Your Data")
+    st.markdown("### :material/query_stats: Explore Your Data")
     st.caption(
         "The charts above were generated automatically. "
         "Use this section to explore any specific relationship you're curious about."

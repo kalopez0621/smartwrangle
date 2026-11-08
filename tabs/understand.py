@@ -147,7 +147,7 @@ def render_understand_tab():
     <div class="quality-banner">
         <div>
             <div class="quality-label">Data Quality Score</div>
-            <div class="quality-score-number" style="color:{grade_color};">{score}</div>
+            <div class="quality-score-number" style="color:{grade_color};">{round(score)}</div>
             <div class="quality-grade" style="color:{grade_color};">{grade}</div>
         </div>
         <div style="color:#cbd5e1; font-size:15px; max-width:500px; line-height:1.7;">
@@ -219,21 +219,22 @@ def render_understand_tab():
         if not cols:
             continue    # skip empty groups
 
-        # Emoji prefix per type for quick visual scanning
-        emoji_map = {
-            "Date / Time":                      "📅",
-            "Financial Amount":                 "💰",
-            "Category":                         "🏷",
-            "Category (many values)":           "📋",
-            "Numeric Measurement":              "📐",
-            "Free Text":                        "📝",
-            "Identifier (not used in analysis)":"🔑",
+        # A line icon per type for quick visual scanning. ":material/name:"
+        # is a Google Material icon that Streamlit draws, matching the tabs.
+        icon_map = {
+            "Date / Time":                       "calendar_month",
+            "Financial Amount":                  "payments",
+            "Category":                          "label",
+            "Category (many values)":            "format_list_bulleted",
+            "Numeric Measurement":               "straighten",
+            "Free Text":                         "notes",
+            "Identifier (not used in analysis)": "key",
         }
-        emoji = emoji_map.get(type_label, "•")
+        icon = f":material/{icon_map.get(type_label, 'circle')}:"
 
         # Build the column list as a comma-separated string
         col_list = ", ".join(f"**{c}**" for c in cols)
-        st.markdown(f"{emoji} **{type_label}** — {col_list}")
+        st.markdown(f"{icon} **{type_label}** — {col_list}")
 
     st.markdown("---")
 
@@ -350,7 +351,8 @@ def render_understand_tab():
     # ── SECTION 6: Advanced Details (collapsed by default) ────────────────────
     # st.expander() creates a collapsible section
     # expanded=False means it starts closed — won't overwhelm beginners
-    with st.expander("⚙ Advanced Details — Numeric Column Analysis", expanded=False):
+    with st.expander("Advanced Details — Numeric Column Analysis",
+                     icon=":material/settings:", expanded=False):
         st.caption(
             "This section shows statistics for your numeric columns. "
             "It is hidden by default because most users won't need it. "

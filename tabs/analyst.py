@@ -186,10 +186,38 @@ Quality findings:
 
 # ── Small display helpers ─────────────────────────────────────────────────────
 
+# Chat avatars: line icons in the app's blue instead of Streamlit's default
+# red and orange. The colors themselves are set in _AVATAR_CSS below.
+USER_AVATAR = ":material/person:"
+AI_AVATAR   = ":material/auto_awesome:"
+
+# Streamlit draws an icon avatar inside an element whose test id starts with
+# "stChatMessageAvatar". This paints that square blue with a white icon.
+_AVATAR_CSS = """
+<style>
+    [data-testid^="stChatMessageAvatar"] {
+        background-color: #3b82f6 !important;
+        color: white !important;
+    }
+    [data-testid^="stChatMessageAvatar"] span,
+    [data-testid^="stChatMessageAvatar"] svg {
+        color: white !important;
+        fill: white !important;
+    }
+</style>
+"""
+
+
+def _avatar(role: str) -> str:
+    """Pick the avatar icon for a chat role ("user" or "assistant")."""
+    return USER_AVATAR if role == "user" else AI_AVATAR
+
+
 def _show_history(history):
     """Draw every earlier question and answer in the conversation."""
     for message in history:
-        with st.chat_message("user" if message["role"] == "user" else "assistant"):
+        role = "user" if message["role"] == "user" else "assistant"
+        with st.chat_message(role, avatar=_avatar(role)):
             st.markdown(message["content"])
 
 
@@ -342,7 +370,8 @@ def render_analyst_tab():
         return
 
     # ── Header ─────────────────────────────────────────────────────────────────
-    st.markdown("### 🤖 AI Analyst")
+    st.markdown("### :material/auto_awesome: AI Analyst")
+    st.markdown(_AVATAR_CSS, unsafe_allow_html=True)    # blue chat avatars
     st.caption(
         "Ask any question about your dataset in plain English. "
         "The AI has full context about your data's structure, quality, "
@@ -438,14 +467,14 @@ def render_analyst_tab():
             "content": question_to_ask
         })
 
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=_avatar("user")):
             st.markdown(question_to_ask)
 
         # Build the system prompt from current dataset context
         system_prompt = _build_system_prompt(df, col_types, quality_result)
 
         # Call the Anthropic API
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar=_avatar("assistant")):
             with st.spinner("Analyzing your dataset..."):
                 try:
                     client = anthropic.Anthropic(api_key=api_key)

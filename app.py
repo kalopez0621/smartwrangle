@@ -71,6 +71,9 @@ from utils.sanitizer import sanitize_column_names
 
 # Google sign-in area for the sidebar (login is only required for the AI tab)
 from utils.auth import render_sidebar_account
+# The monthly free-question limit, shown on the AI Analyst landing card
+# (read from [usage] in secrets, so the card always matches the real limit)
+from utils.usage import get_monthly_limit
 
 
 # ── Page configuration ─────────────────────────────────────────────────────────
@@ -365,7 +368,7 @@ with st.sidebar:
 
         st.markdown("**Current Dataset**")
         st.markdown(
-            f"📄 {st.session_state.get('dataset_name', 'Dataset')}"
+            f":material/description: {st.session_state.get('dataset_name', 'Dataset')}"
         )
         st.markdown(
             f"**{len(df):,}** rows · **{len(df.columns)}** columns"
@@ -376,7 +379,7 @@ with st.sidebar:
             score = st.session_state.quality_result["score"]
             grade = st.session_state.quality_result["grade"]
             st.markdown(
-                f"Quality score: **{score}/100** ({grade})"
+                f"Quality score: **{round(score)}/100** ({grade})"
             )
 
         st.markdown("---")
@@ -597,54 +600,51 @@ if "working_df" not in st.session_state:
     </div>
     """, unsafe_allow_html=True)
 
-    # Three feature cards
-    col1, col2, col3 = st.columns(3)
+    # Four feature cards, one per tab
     card_style = (
         "background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; "
         "padding:24px; height:100%;"
     )
 
-    with col1:
-        st.markdown(f"""
-        <div style="{card_style}">
-            <div style="font-size:32px; margin-bottom:12px;">📋</div>
-            <div style="font-size:17px; font-weight:700; color:#1e293b; margin-bottom:8px;">
-                Understand
-            </div>
-            <div style="font-size:14px; color:#64748b; line-height:1.6;">
-                Instantly see what's in your data — column types, date ranges,
-                quality score, and any problems — in plain English.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    # Each card shows the same Google Material line icon as its tab.
+    # Streamlit already loads the "Material Symbols Rounded" font for its
+    # own icons, so writing the icon's name inside a span set to that font
+    # draws the icon. The blue matches the rest of the app.
+    icon_style = (
+        "font-family:'Material Symbols Rounded'; font-size:32px; line-height:1; "
+        "color:#3b82f6; margin-bottom:12px; display:block; "
+        "font-feature-settings:'liga';"
+    )
 
-    with col2:
-        st.markdown(f"""
-        <div style="{card_style}">
-            <div style="font-size:32px; margin-bottom:12px;">📊</div>
-            <div style="font-size:17px; font-weight:700; color:#1e293b; margin-bottom:8px;">
-                Discover
-            </div>
-            <div style="font-size:14px; color:#64748b; line-height:1.6;">
-                Auto-generated charts with plain-English headlines
-                telling you exactly what each chart means.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    cards = [
+        ("fact_check", "Understand",
+         "Instantly see what's in your data — column types, date ranges, "
+         "quality score, and any problems — in plain English."),
+        ("insights", "Discover",
+         "Auto-generated charts with plain-English headlines "
+         "telling you exactly what each chart means."),
+        ("cleaning_services", "Clean &amp; Export",
+         "One-click fixes, full undo support, and download your "
+         "cleaned data plus a plain-English summary report."),
+        ("auto_awesome", "AI Analyst",
+         "Ask questions about your data in plain English. "
+         f"Sign in with Google for {get_monthly_limit()} free questions a month."),
+    ]
 
-    with col3:
-        st.markdown(f"""
-        <div style="{card_style}">
-            <div style="font-size:32px; margin-bottom:12px;">⚙</div>
-            <div style="font-size:17px; font-weight:700; color:#1e293b; margin-bottom:8px;">
-                Clean &amp; Export
+    # st.columns(4) splits the row into four equal cards
+    for column, (icon, title, text) in zip(st.columns(4), cards):
+        with column:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <span style="{icon_style}">{icon}</span>
+                <div style="font-size:17px; font-weight:700; color:#1e293b; margin-bottom:8px;">
+                    {title}
+                </div>
+                <div style="font-size:14px; color:#64748b; line-height:1.6;">
+                    {text}
+                </div>
             </div>
-            <div style="font-size:14px; color:#64748b; line-height:1.6;">
-                One-click fixes, full undo support, and download your
-                cleaned data plus a plain-English summary report.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
@@ -665,7 +665,7 @@ else:
         ":material/fact_check: Understand",
         ":material/insights: Discover",
         ":material/cleaning_services: Clean & Export",
-        ":material/smart_toy: AI Analyst",
+        ":material/auto_awesome: AI Analyst",
     ])
 
     with tab1:
