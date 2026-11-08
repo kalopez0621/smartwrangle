@@ -75,6 +75,14 @@ Authlib==1.9.5
 httpx==0.28.1
 
 
+# ── Usage limits database (Version 2, Stage 2) ──────────────
+# psycopg talks to the Neon Postgres database that counts each
+# person's AI questions per month. The [binary] extra includes
+# everything it needs, so nothing else has to be installed on
+# Windows or on Streamlit Cloud.
+psycopg[binary]==3.3.8
+
+
 # ── Arrow serialization ───────────────────────────────────────
 # pyarrow is how Streamlit sends tables to the browser.
 # Pinned so it always matches the pandas version above.

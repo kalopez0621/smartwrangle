@@ -27,7 +27,10 @@ import streamlit as st
 import anthropic
 
 # Login gate: only signed-in visitors can use the AI Analyst
-from utils.auth import require_login_for_ai
+from utils.auth import require_login_for_ai, get_user_email
+
+# Monthly question limits (Version 2, Stage 2)
+from utils.usage import check_allowance, record_question, next_reset_label, UsageUnavailable
 
 # ── Local .env file location (laptop only) ───────────────────────
 # On your laptop the API key lives in a file named .env in the
@@ -181,6 +184,104 @@ Quality findings:
     return system_prompt
 
 
+# ── Small display helpers ─────────────────────────────────────────────────────
+
+def _show_history(history):
+    """Draw every earlier question and answer in the conversation."""
+    for message in history:
+        with st.chat_message("user" if message["role"] == "user" else "assistant"):
+            st.markdown(message["content"])
+
+
+def _show_allowance(allowance: dict):
+    """
+    Tell the person where they stand with their monthly questions.
+
+    allowance comes from utils.usage.check_allowance().
+    """
+    reason = allowance["reason"]
+    limit = allowance["limit"]
+
+    if reason == "not_configured":
+        st.info(
+            "**The AI Analyst needs its usage database, which is not set up yet.**\n\n"
+            "Add a `[database]` section with the Neon connection string to "
+            "`.streamlit/secrets.toml` on your laptop, or to Settings > Secrets "
+            "on Streamlit Cloud. See `.streamlit/secrets.toml.example`."
+        )
+    elif reason == "unavailable":
+        st.warning(
+            "The AI Analyst can't check your question count right now. "
+            "Please try again in a minute. The other tabs still work."
+        )
+    elif reason == "limit_reached":
+        st.info(
+            f"**You've used all {limit} free AI questions for this month.**\n\n"
+            f"Your questions reset on {next_reset_label()}. "
+            "The Understand, Discover, and Clean & Export tabs stay free."
+        )
+    elif allowance["unlimited"]:
+        st.caption("Unlimited questions on this account.")
+    else:
+        _show_allowance_card(allowance["remaining"], limit)
+
+
+def _show_allowance_card(remaining: int, limit: int):
+    """
+    Draw the "questions left" card: a big number, a row of blocks
+    (blue = left, grey = used), and the reset date underneath.
+
+    With more than 30 questions the blocks would get too small, so the
+    card switches to one continuous bar instead. When 3 or fewer are
+    left, the blue turns amber as a gentle heads-up.
+    """
+    used = limit - remaining
+    word = "question" if remaining == 1 else "questions"
+    fill = "#d97706" if remaining <= 3 else "#2563eb"   # amber when running low
+
+    if limit <= 30:
+        # One small block per question: left ones first, then used ones
+        blocks = (f'<span class="sw-q-block" style="background:{fill}"></span>' * remaining
+                  + '<span class="sw-q-block sw-q-used"></span>' * used)
+        meter = f'<div class="sw-q-blocks">{blocks}</div>'
+    else:
+        pct = 0 if limit == 0 else round(remaining / limit * 100)
+        meter = (f'<div class="sw-q-bar"><div style="width:{pct}%; background:{fill}; '
+                 f'height:100%; border-radius:4px"></div></div>')
+
+    st.markdown(f"""
+    <style>
+        /* Card around the counter so it stands out from the page */
+        .sw-q-card {{
+            display: inline-block;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin: 4px 0 8px 0;
+        }}
+        .sw-q-top {{ display: flex; align-items: baseline; gap: 8px; }}
+        .sw-q-num {{ font-size: 30px; font-weight: 700; line-height: 1; }}
+        .sw-q-label {{ font-size: 14px; color: #475569; font-weight: 500; }}
+        .sw-q-blocks {{ display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 8px 0; max-width: 340px; }}
+        .sw-q-block {{ width: 13px; height: 13px; border-radius: 3px; display: inline-block; }}
+        .sw-q-used {{ background: #e2e8f0; }}
+        .sw-q-bar {{ width: 300px; max-width: 100%; height: 10px; background: #e2e8f0;
+                     border-radius: 4px; margin: 10px 0 8px 0; }}
+        .sw-q-reset {{ font-size: 12.5px; color: #64748b; }}
+    </style>
+    <div class="sw-q-card" role="status"
+         aria-label="{remaining} of {limit} free {word} left this month">
+        <div class="sw-q-top">
+            <span class="sw-q-num" style="color:{fill}">{remaining}</span>
+            <span class="sw-q-label">of {limit} free {word} left this month</span>
+        </div>
+        {meter}
+        <div class="sw-q-reset">Resets {next_reset_label()}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 # ── Main tab renderer ──────────────────────────────────────────────────────────
 
 def render_analyst_tab():
@@ -248,6 +349,20 @@ def render_analyst_tab():
         "and statistics — but never sees your raw data rows."
     )
 
+    # ── Monthly question allowance (Version 2, Stage 2) ────────────────────────
+    # Each signed-in person gets a set number of free questions per month.
+    # check_allowance() never raises; database problems come back as
+    # allowed=False so the AI stays locked instead of becoming unlimited.
+    user_email = get_user_email()
+    allowance = check_allowance(user_email)
+    _show_allowance(allowance)
+
+    if not allowance["allowed"]:
+        # Still show the earlier conversation so nothing is lost on screen,
+        # but hide the suggestions and the question box.
+        _show_history(st.session_state.analyst_history)
+        return
+
     # ── Suggested questions ────────────────────────────────────────────────────
     # These give new users a starting point and demonstrate the tab's value.
     st.markdown("**Try asking:**")
@@ -298,15 +413,7 @@ def render_analyst_tab():
     # Show all previous messages in the conversation so the user can
     # scroll back and see earlier questions and answers.
     history = st.session_state.analyst_history
-
-    if history:
-        for message in history:
-            if message["role"] == "user":
-                with st.chat_message("user"):
-                    st.markdown(message["content"])
-            else:
-                with st.chat_message("assistant"):
-                    st.markdown(message["content"])
+    _show_history(history)
 
     # ── Question input ─────────────────────────────────────────────────────────
     # Check if a suggestion was clicked — if so, prefill the input
@@ -320,6 +427,9 @@ def render_analyst_tab():
     question_to_ask = user_question or prefill
 
     # ── Send question to Claude ────────────────────────────────────────────────
+    # answered is set to True only when the AI replies, so the page can
+    # refresh afterward and show the new "questions left" number.
+    answered = False
     if question_to_ask:
 
         # Add user message to history and display it
@@ -366,6 +476,7 @@ def render_analyst_tab():
                         "role": "assistant",
                         "content": answer
                     })
+                    answered = True
 
                 except Exception as e:
                     # The question got no answer, so take it back out of the
@@ -383,6 +494,20 @@ def render_analyst_tab():
                         st.error("Rate limit reached. Wait a moment and try again.")
                     else:
                         st.error(f"API error: {str(e)}")
+
+    # ── Count the answered question ────────────────────────────────────────────
+    # Counted only after a real answer, so a failed AI call costs nothing.
+    # This sits outside the try/except above on purpose: st.rerun() works by
+    # raising a special signal, which "except Exception" would swallow.
+    if answered:
+        if not allowance["unlimited"]:
+            try:
+                record_question(user_email)
+            except UsageUnavailable:
+                # The answer was already shown; only the count failed to save.
+                st.caption("Note: your question count could not be updated just now.")
+                return
+        st.rerun()   # redraw so the "questions left" line is current
 
     # ── Clear conversation button ──────────────────────────────────────────────
     if history:

@@ -94,6 +94,7 @@ No data science background is needed. Every finding and every tool is explained 
 - Suggested starter questions, follow-up questions, and a clear-conversation button
 - Uses Claude Haiku 5.5 through the Anthropic API
 - Requires a free Google sign-in (the other three tabs need no account)
+- 20 free questions per person per month, counted in a small Postgres database (Neon) and reset on the 1st
 
 ---
 
@@ -145,6 +146,14 @@ The other three tabs work without this.
 4. Restart the app.
 
 `secrets.toml` is listed in `.gitignore`. Signing in or out reloads the page, so sign in from the sidebar before uploading a file.
+
+### Set up the question limit database (needed for the AI Analyst)
+
+1. Create a free project at [Neon](https://neon.com) and copy its connection string (Connect button; starts with `postgresql://`).
+2. Add it to `secrets.toml` under `[database]`, and set the monthly limit and any unlimited emails under `[usage]`. The example file shows the layout.
+3. The app creates its one table (`ai_usage`) by itself on first use.
+
+If the database can't be reached, the AI Analyst stays locked with a "try again" message, so a database problem never means unlimited AI use.
 
 ---
 
@@ -209,6 +218,7 @@ smartwrangle/
 ├── utils/
 │   ├── sanitizer.py        # Makes tables safe to display; tidies column names
 │   ├── auth.py             # Google sign-in; locks the AI Analyst to signed-in users
+│   ├── usage.py            # Monthly AI question limits (Neon Postgres)
 │   ├── exporter.py         # CSV download and text summary report
 │   └── pdf_report.py       # PDF report with charts
 ├── test_data/              # Messy test file and the script that builds it
@@ -231,6 +241,7 @@ smartwrangle/
 | PDF report | fpdf2 |
 | AI Analyst | Anthropic API (Claude Haiku 5.5), python-dotenv |
 | Sign-in | Streamlit st.login with Google (Authlib, httpx) |
+| Usage limits | Neon Postgres (psycopg) |
 | Language | Python 3.12 (also runs on 3.13) |
 
 ---
@@ -240,10 +251,15 @@ smartwrangle/
 These are planned, not built:
 
 - Done: Google sign-in for the AI Analyst
-- Next: usage limits per person, then payments
+- Done: monthly AI question limits per person
+- Next: payments
 
 ---
 
 ## About
 
 Built as a portfolio project for a dual bachelor's program in Data Analytics and Applied AI. The goal was a tool that walks anyone, technical or not, through the full path from a messy file to clean, analysis-ready data.
+
+---
+
+Copyright 2026 Karla Lopez. All rights reserved.
