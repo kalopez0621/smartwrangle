@@ -93,6 +93,7 @@ No data science background is needed. Every finding and every tool is explained 
 - Only a summary is sent to the AI: column types, statistics, and quality findings. Raw rows never leave the app.
 - Suggested starter questions, follow-up questions, and a clear-conversation button
 - Uses Claude Haiku 5.5 through the Anthropic API
+- Requires a free Google sign-in (the other three tabs need no account)
 
 ---
 
@@ -130,9 +131,20 @@ The other three tabs work without this.
    ```
    ANTHROPIC_API_KEY=your-key-here
    ```
-4. Refresh the app page.
+4. Set up Google sign-in (next section). The AI Analyst stays locked until sign-in is set up.
 
 `.env` is listed in `.gitignore`, so your key is never uploaded to GitHub.
+
+### Set up Google sign-in (needed for the AI Analyst)
+
+1. In [Google Cloud](https://console.cloud.google.com), create a project, open **Google Auth Platform**, and finish the setup wizard (audience: External).
+2. Under **Clients**, create a client of type **Web application** and add these Authorized redirect URIs:
+   - `http://localhost:8501/oauth2callback` (laptop)
+   - `https://YOUR-APP.streamlit.app/oauth2callback` (live app)
+3. In the `.streamlit` folder, copy `secrets.toml.example`, name the copy `secrets.toml`, and fill in the values. The comments in the file explain each one.
+4. Restart the app.
+
+`secrets.toml` is listed in `.gitignore`. Signing in or out reloads the page, so sign in from the sidebar before uploading a file.
 
 ---
 
@@ -140,13 +152,20 @@ The other three tabs work without this.
 
 1. Push this repository to your GitHub account.
 2. At [share.streamlit.io](https://share.streamlit.io), create an app from the repository, with `app.py` as the main file. Under **Advanced settings**, choose Python 3.12 or newer.
-3. In the app's **Settings > Secrets**, add:
+3. In the app's **Settings > Secrets**, add your API key and the `[auth]` section from `.streamlit/secrets.toml.example`, with `redirect_uri` set to the live address:
    ```
    ANTHROPIC_API_KEY = "your-key-here"
+
+   [auth]
+   redirect_uri = "https://YOUR-APP.streamlit.app/oauth2callback"
+   cookie_secret = "..."
+   client_id = "..."
+   client_secret = "..."
+   server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
    ```
 4. Every push to the `main` branch redeploys the app automatically.
 
-**About API cost:** visitors who use the AI Analyst spend your API credits. Each question costs a fraction of a cent with Claude Haiku 5.5, but a public link can be shared. Use a separate key for this app and set a monthly spend limit in the Claude Console.
+**About API cost:** signed-in visitors who use the AI Analyst spend your API credits. Each question costs a fraction of a cent with Claude Haiku 5.5, and sign-in limits the AI to people with a Google account, but a public link can still be shared. Use a separate key for this app and set a monthly spend limit in the Claude Console.
 
 ---
 
@@ -172,8 +191,11 @@ smartwrangle/
 ├── run.bat                 # Windows one-command launcher
 ├── requirements.txt        # Pinned package versions
 ├── .env.example            # Template for the local API key file
+├── assets/
+│   └── favicon.png         # SW logo shown in the browser tab
 ├── .streamlit/
-│   └── config.toml         # Theme, upload size, and security settings
+│   ├── config.toml         # Theme, upload size, and security settings
+│   └── secrets.toml.example # Template for Google sign-in settings
 ├── engine/                 # Analysis and cleaning logic (no Streamlit code)
 │   ├── detector.py         # Labels each column's type; converts date text to dates
 │   ├── quality.py          # Quality score and plain-English findings
@@ -186,6 +208,7 @@ smartwrangle/
 │   └── analyst.py
 ├── utils/
 │   ├── sanitizer.py        # Makes tables safe to display; tidies column names
+│   ├── auth.py             # Google sign-in; locks the AI Analyst to signed-in users
 │   ├── exporter.py         # CSV download and text summary report
 │   └── pdf_report.py       # PDF report with charts
 ├── test_data/              # Messy test file and the script that builds it
@@ -207,6 +230,7 @@ smartwrangle/
 | Excel files | openpyxl (.xlsx), xlrd (.xls) |
 | PDF report | fpdf2 |
 | AI Analyst | Anthropic API (Claude Haiku 5.5), python-dotenv |
+| Sign-in | Streamlit st.login with Google (Authlib, httpx) |
 | Language | Python 3.12 (also runs on 3.13) |
 
 ---
@@ -215,7 +239,8 @@ smartwrangle/
 
 These are planned, not built:
 
-- Logins, usage limits, and payments, so the app can run as a hosted service
+- Done: Google sign-in for the AI Analyst
+- Next: usage limits per person, then payments
 
 ---
 

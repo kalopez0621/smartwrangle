@@ -66,6 +66,15 @@ anthropic==1.13.0
 python-dotenv==1.2.4
 
 
+# ── Google sign-in (Version 2, Stage 1) ──────────────────────
+# st.login() needs these two packages (Streamlit's "auth" extra).
+# Authlib handles the Google sign-in handshake (OpenID Connect).
+Authlib==1.9.5
+
+# httpx is the web client Authlib uses to talk to Google.
+httpx==0.28.1
+
+
 # ── Arrow serialization ───────────────────────────────────────
 # pyarrow is how Streamlit sends tables to the browser.
 # Pinned so it always matches the pandas version above.

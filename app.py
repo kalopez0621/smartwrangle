@@ -69,14 +69,23 @@ from tabs.analyst import render_analyst_tab
 # Utility modules
 from utils.sanitizer import sanitize_column_names
 
+# Google sign-in area for the sidebar (login is only required for the AI tab)
+from utils.auth import render_sidebar_account
+
 
 # ── Page configuration ─────────────────────────────────────────────────────────
 # st.set_page_config() MUST be the very first Streamlit call in the file.
 # It sets the browser tab title, icon, and layout.
 # layout="wide" uses the full browser width instead of a narrow center column.
+# page_icon points to the SW logo image (the same logo drawn in the sidebar),
+# so the browser tab shows SmartWrangle's own icon instead of an emoji.
+# The path is built from this file's location so it works on the laptop
+# and on Streamlit Cloud alike.
+FAVICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "favicon.png")
+
 st.set_page_config(
     page_title="SmartWrangle 2.0",
-    page_icon="🔷",
+    page_icon=FAVICON_PATH,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -95,24 +104,70 @@ st.markdown("""
         font-family: 'DM Sans', sans-serif;
     }
 
-    /* Style the tab bar — make active tab more distinct */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 0;
+    /* ── Tab bar: modern segmented control ──────────────────────────────────
+       The four tabs sit inside one soft, rounded "track". Each tab is a pill.
+       The active tab is raised in white with blue text.
+       Selectors use role, data-testid, and aria names, which stay the same
+       across Streamlit updates (the random "st-emotion-cache" class names
+       do not). Streamlit 1.65 builds tabs this way. */
+    .stTabs [role="tablist"] {
+        gap: 4px;
+        background: #f1f5f9;                 /* light slate track */
+        border: 1px solid #e2e8f0;
+        box-shadow: none;                    /* remove Streamlit's bottom line */
+        border-radius: 12px;
+        padding: 5px;
+        width: fit-content;                  /* hug the tabs, do not stretch */
+        max-width: 100%;
+        overflow-x: auto;                    /* scroll sideways on phones */
+        scrollbar-width: none;               /* hide the scrollbar line (Firefox, Chrome) */
+        margin-bottom: 12px;
     }
-    .stTabs [data-baseweb="tab"] {
-        font-size: 15px;
-        font-weight: 500;
-        padding: 10px 24px;
-        border-radius: 8px 8px 0 0;
-        color: #64748b;
+    .stTabs [role="tablist"]::-webkit-scrollbar {
+        display: none;                       /* hide the scrollbar line (older Chrome, Safari) */
     }
-    .stTabs [aria-selected="true"] {
-        background: #f8fafc;
+    /* Streamlit draws its own grey divider as a ::after bar under the tabs */
+    .stTabs [role="tablist"]::after {
+        display: none;
+    }
+    .stTabs [data-testid="stTab"] {
+        height: auto;
+        padding: 8px 18px;
+        border-radius: 9px;
+        border: none;
+        background: transparent;
+        color: #64748b;                      /* muted grey for inactive tabs */
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    }
+    /* Tab text and icon (Streamlit wraps the label in a <p>) */
+    .stTabs [data-testid="stTab"] p {
+        font-size: 14.5px;
+        font-weight: 600;
+        color: inherit;
+        margin: 0;
+    }
+    /* Hover on an inactive tab: a light lift so it feels clickable */
+    .stTabs [data-testid="stTab"]:hover {
+        background: #e2e8f0;
         color: #1e293b;
-        font-weight: 700;
-        border-bottom: 3px solid #3b82f6;
+    }
+    /* Active tab: white pill, blue text, soft shadow */
+    .stTabs [data-testid="stTab"][aria-selected="true"],
+    .stTabs [data-testid="stTab"][aria-selected="true"]:hover {
+        background: #ffffff;
+        color: #2563eb;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 1px 6px rgba(15, 23, 42, 0.06);
+    }
+    /* Keyboard focus ring, for people who move around with the Tab key */
+    .stTabs [data-testid="stTab"]:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 2px;
+    }
+    /* Hide Streamlit's default sliding underline under the active tab */
+    .stTabs .react-aria-SelectionIndicator {
+        display: none;
     }
 
     /* Clean up metric cards */
@@ -274,6 +329,12 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     st.markdown("<p style='color:#64748b; font-size:12px; margin-top:0; margin-bottom:0;'>AI-powered data wrangling</p>", unsafe_allow_html=True)
     st.markdown("---")
+
+    # ── Google sign-in (Version 2, Stage 1) ───────────────────────────────────
+    # Placed ABOVE the file uploader on purpose: signing in reloads the page
+    # and clears any uploaded file, so people should sign in first.
+    # Draws nothing if sign-in is not set up in secrets.
+    render_sidebar_account()
 
     # ── File uploader ──────────────────────────────────────────────────────────
     # st.file_uploader() shows a drag-and-drop zone.
@@ -598,11 +659,13 @@ else:
     # ── Three-tab interface (file is loaded) ───────────────────────────────────
     # st.tabs() creates the clickable tab bar at the top of the page.
     # Each "with tab:" block only renders when that tab is active.
+    # The :material/name: codes are Google Material line icons that Streamlit
+    # draws itself. They look the same on every computer, unlike emoji.
     tab1, tab2, tab3, tab4 = st.tabs([
-    "📋  Understand",
-    "📊  Discover",
-    "⚙  Clean & Export",
-    "🤖  AI Analyst",
+        ":material/fact_check: Understand",
+        ":material/insights: Discover",
+        ":material/cleaning_services: Clean & Export",
+        ":material/smart_toy: AI Analyst",
     ])
 
     with tab1:

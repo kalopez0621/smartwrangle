@@ -26,6 +26,9 @@ from pathlib import Path
 import streamlit as st
 import anthropic
 
+# Login gate: only signed-in visitors can use the AI Analyst
+from utils.auth import require_login_for_ai
+
 # ── Local .env file location (laptop only) ───────────────────────
 # On your laptop the API key lives in a file named .env in the
 # project folder, one level up from this file (tabs/ -> project root).
@@ -190,6 +193,14 @@ def render_analyst_tab():
         st.session_state.quality_result   quality score dict
         st.session_state.analyst_history  conversation history list
     """
+
+    # ── Guard: Google sign-in required (Version 2, Stage 1) ────────────────────
+    # The AI is the only part of the app that costs money, so it is the only
+    # tab that needs a login. require_login_for_ai() shows a sign-in message
+    # and returns False when the visitor is not signed in. It also returns
+    # False if sign-in is not set up, so the AI is never left open by mistake.
+    if not require_login_for_ai():
+        return
 
     # ── Guard — no dataset loaded ──────────────────────────────────────────────
     if "working_df" not in st.session_state:
