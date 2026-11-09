@@ -160,7 +160,7 @@ def build_summary_report(
 
     lines += [
         "=" * 65,
-        "  SMARTWRANGLE 2.0 — DATA ANALYSIS REPORT",
+        "  SMARTWRANGLE 2.0: DATA ANALYSIS REPORT",
         "=" * 65,
         f"  Dataset   : {dataset_name}",
         f"  Generated : {now}",
@@ -172,7 +172,7 @@ def build_summary_report(
 
     # ── SECTION 2: Dataset Overview ───────────────────────────────────────────
     lines += [
-        "SECTION 1 — DATASET OVERVIEW",
+        "SECTION 1: DATASET OVERVIEW",
         "-" * 40,
         "",
     ]
@@ -211,7 +211,7 @@ def build_summary_report(
 
     # ── SECTION 3: Data Quality ────────────────────────────────────────────────
     lines += [
-        "SECTION 2 — DATA QUALITY",
+        "SECTION 2: DATA QUALITY",
         "-" * 40,
         "",
         f"  Quality Score  : {quality_result['score']} / 100",
@@ -233,7 +233,7 @@ def build_summary_report(
 
     # ── SECTION 4: Key Findings ────────────────────────────────────────────────
     lines += [
-        "SECTION 3 — KEY FINDINGS",
+        "SECTION 3: KEY FINDINGS",
         "-" * 40,
         "",
     ]
@@ -287,7 +287,7 @@ def build_summary_report(
 
     # ── SECTION 5: Cleaning Actions ───────────────────────────────────────────
     lines += [
-        "SECTION 4 — CLEANING ACTIONS PERFORMED",
+        "SECTION 4: CLEANING ACTIONS",
         "-" * 40,
         "",
     ]

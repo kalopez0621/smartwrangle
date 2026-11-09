@@ -147,7 +147,7 @@ def _build_system_prompt(df, col_types: dict, quality_result: dict) -> str:
 a professional data wrangling application.
 
 Your job is to answer questions about the dataset the user has uploaded. \
-You have access to the dataset's metadata and statistics — not the raw rows.
+You have the dataset's metadata and statistics, not the raw rows.
 
 Always respond in plain English. Be specific and reference actual column names, \
 numbers, and findings from the context below. Never fabricate statistics not \
@@ -155,7 +155,13 @@ provided here. If you cannot answer from the context provided, say so clearly \
 and explain what additional information would be needed.
 
 Keep answers concise and structured. Use bullet points when listing multiple \
-findings. Avoid generic advice — every answer should reference this specific dataset.
+findings. Avoid generic advice. Every answer should reference this specific dataset.
+
+Length: keep each answer under about 400 words. If a full answer would be \
+longer, cover the most important points and offer to go deeper on the rest.
+
+Writing style: never use em dashes (the long dash). Use a period, comma, colon, \
+or parentheses instead. Write in plain, simple sentences.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DATASET CONTEXT
@@ -375,7 +381,7 @@ def render_analyst_tab():
     st.caption(
         "Ask any question about your dataset in plain English. "
         "The AI has full context about your data's structure, quality, "
-        "and statistics — but never sees your raw data rows."
+        "and statistics, but it never sees your raw data rows."
     )
 
     # ── Monthly question allowance (Version 2, Stage 2) ────────────────────────
@@ -481,7 +487,10 @@ def render_analyst_tab():
 
                     response = client.messages.create(
                         model=CLAUDE_MODEL,   # set at the top of this file
-                        max_tokens=1024,
+                        # Room for a full structured answer. 1,024 cut long
+                        # answers off mid-sentence. At Haiku's output price this
+                        # is still about a tenth of a cent per answer.
+                        max_tokens=2048,
                         system=system_prompt,
                         messages=st.session_state.analyst_history
                     )
@@ -496,6 +505,16 @@ def render_analyst_tab():
                         for block in response.content
                         if block.type == "text"
                     )
+
+                    # stop_reason "max_tokens" means the answer ran out of
+                    # room before it finished. Say so instead of leaving a
+                    # sentence hanging.
+                    if response.stop_reason == "max_tokens":
+                        answer += (
+                            "\n\n*This answer reached its length limit and was "
+                            "cut short. Ask a narrower question, or ask me to "
+                            "continue.*"
+                        )
 
                     # Display the answer
                     st.markdown(answer)

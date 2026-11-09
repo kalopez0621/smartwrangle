@@ -71,6 +71,8 @@ from utils.sanitizer import sanitize_column_names
 
 # Google sign-in area for the sidebar (login is only required for the AI tab)
 from utils.auth import render_sidebar_account
+# Puts the file and cleaning steps back after Google sign-in
+from utils.carryover import restore_after_sign_in
 # The monthly free-question limit, shown on the AI Analyst landing card
 # (read from [usage] in secrets, so the card always matches the real limit)
 from utils.usage import get_monthly_limit
@@ -193,7 +195,7 @@ st.markdown("""
         color: #1e293b;
     }
 
-    /* Expanders — make them look like accordion sections */
+    /* Expanders: make them look like accordion sections */
     .streamlit-expanderHeader {
         font-weight: 600;
         font-size: 14px;
@@ -233,7 +235,7 @@ st.markdown("""
         background: #0f172a;
     }
 
-    /* Target only text we control — headings, labels, buttons.
+    /* Target only text we control: headings, labels, buttons.
        We removed the wildcard * selector because it was overriding
        Streamlit's internal file uploader text, making "Drag and drop
        file here" and "Limit 200MB per file" unreadable on the dark bg. */
@@ -273,7 +275,7 @@ st.markdown("""
         color: #94a3b8 !important;
     }
 
-    /* File uploader box — white background so text is always legible */
+    /* File uploader box: white background so text is always legible */
     [data-testid="stSidebar"] [data-testid="stFileUploader"] {
         background: #1e293b;
         border: 1px solid #334155;
@@ -282,7 +284,7 @@ st.markdown("""
     }
 
     /* "Upload your dataset" label sits ABOVE the white uploader box,
-       against the dark sidebar — needs an explicit bright color rule.
+       against the dark sidebar, so it needs an explicit bright color rule.
        Streamlit renders widget labels as a <p> inside stWidgetLabel. */
     [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
     [data-testid="stSidebar"] [data-testid="stWidgetLabel"] label,
@@ -311,6 +313,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# ── Back from Google sign-in? Put the person's work back ──────────────────────
+# Signing in sends the browser to Google and back as a brand-new visit with
+# empty session state. utils/carryover.py set the file and cleaning steps
+# aside first; this puts them back. It must run before the sidebar, which
+# shows the current dataset. start_tab stays the same for the whole visit,
+# so the tab bar does not jump around on later clicks.
+if restore_after_sign_in():
+    st.session_state.start_tab = ":material/auto_awesome: AI Analyst"
+    st.toast("You're signed in. Your file and cleaning steps are still here.",
+             icon=":material/check_circle:")
+
+
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 # The sidebar is always visible regardless of which tab is active.
 # It contains the file uploader and basic app information.
@@ -334,8 +348,8 @@ with st.sidebar:
     st.markdown("---")
 
     # ── Google sign-in (Version 2, Stage 1) ───────────────────────────────────
-    # Placed ABOVE the file uploader on purpose: signing in reloads the page
-    # and clears any uploaded file, so people should sign in first.
+    # Signing in leaves the app and comes back; utils/carryover.py keeps
+    # the file and cleaning steps through that round trip.
     # Draws nothing if sign-in is not set up in secrets.
     render_sidebar_account()
 
@@ -569,12 +583,12 @@ if "working_df" not in st.session_state:
               <rect width="88" height="88" rx="22" fill="#1e293b"/>
               <!-- Subtle inner glow -->
               <ellipse cx="42" cy="44" rx="32" ry="26" fill="#3b82f6" opacity="0.06"/>
-              <!-- S letterform — bold, left side, blue-500 -->
+              <!-- S letterform: bold, left side, blue-500 -->
               <path d="M11 27 C11 19 17 14 26 14 L42 14 C52 14 57 20 57 28
                        C57 36 51 40 42 40 L26 40 C18 40 13 45 13 52
                        C13 60 19 65 28 65 L45 65 C55 65 60 59 60 51"
                     stroke="#3b82f6" stroke-width="6.5" stroke-linecap="round" fill="none"/>
-              <!-- W letterform — slightly lighter, right side, blue-400 -->
+              <!-- W letterform: slightly lighter, right side, blue-400 -->
               <path d="M57 16 L63 54 L70 33 L77 54 L83 16"
                     stroke="#60a5fa" stroke-width="5.5" stroke-linecap="round"
                     stroke-linejoin="round" fill="none"/>
@@ -589,18 +603,19 @@ if "working_df" not in st.session_state:
         ">SmartWrangle 2.0</h1>
         <p style="
             font-size: 19px;
-            color: #64748b;
+            color: #334155;
             line-height: 1.7;
             margin-bottom: 40px;
         ">
             Upload any dataset and SmartWrangle tells you what's in it,
-            what it shows, and how to clean it — in plain English,
+            what it shows, and how to clean it, in plain English,
             without requiring any data science knowledge.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Four feature cards, one per tab
+    # Four feature cards, one per tab.
+    # Card text uses a dark slate (#334155) so it reads clearly on the light card.
     card_style = (
         "background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; "
         "padding:24px; height:100%;"
@@ -618,8 +633,8 @@ if "working_df" not in st.session_state:
 
     cards = [
         ("fact_check", "Understand",
-         "Instantly see what's in your data — column types, date ranges, "
-         "quality score, and any problems — in plain English."),
+         "See what's in your data at a glance: column types, date ranges, "
+         "a quality score, and any problems."),
         ("insights", "Discover",
          "Auto-generated charts with plain-English headlines "
          "telling you exactly what each chart means."),
@@ -640,7 +655,7 @@ if "working_df" not in st.session_state:
                 <div style="font-size:17px; font-weight:700; color:#1e293b; margin-bottom:8px;">
                     {title}
                 </div>
-                <div style="font-size:14px; color:#64748b; line-height:1.6;">
+                <div style="font-size:14px; color:#334155; line-height:1.6;">
                     {text}
                 </div>
             </div>
@@ -648,7 +663,7 @@ if "working_df" not in st.session_state:
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='text-align:center; color:#94a3b8; font-size:14px;'>"
+        "<p style='text-align:center; color:#475569; font-size:14px;'>"
         "← Upload a CSV or Excel file using the sidebar to get started"
         "</p>",
         unsafe_allow_html=True
@@ -661,12 +676,14 @@ else:
     # Each "with tab:" block only renders when that tab is active.
     # The :material/name: codes are Google Material line icons that Streamlit
     # draws itself. They look the same on every computer, unlike emoji.
+    # default= picks the tab that opens first. After Google sign-in it is the
+    # AI Analyst tab (start_tab, set above); otherwise the first tab.
     tab1, tab2, tab3, tab4 = st.tabs([
         ":material/fact_check: Understand",
         ":material/insights: Discover",
         ":material/cleaning_services: Clean & Export",
         ":material/auto_awesome: AI Analyst",
-    ])
+    ], default=st.session_state.get("start_tab"))
 
     with tab1:
         # Tab 1: What is in my data?

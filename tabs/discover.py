@@ -49,6 +49,7 @@ import plotly.express as px     # chart library
 from engine.insights  import generate_all_insights
 from engine.detector  import get_columns_of_type
 from utils.sanitizer  import sanitize_for_display
+from utils.wording    import plural          # "1 value" / "3 values"
 
 
 def _md_safe(text: str) -> str:
@@ -236,7 +237,7 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
             cap_chart = st.checkbox(
                 _md_safe(
                     f"Cap chart at 99th percentile "
-                    f"(${p99:,.0f}) for readability — max value is ${max_val:,.0f}"
+                    f"(${p99:,.0f}) so it is easier to read. The largest value is ${max_val:,.0f}"
                 ),
                 value=True,
                 key=f"hist_cap_{col_name}_{index}"
@@ -247,7 +248,7 @@ def _render_insight_card(insight: dict, df: pd.DataFrame, index: int):
                 st.caption(_md_safe(
                     f"Showing {len(plot_data):,} of {len(col_data):,} values. "
                     f"{n_excluded:,} values above ${p99:,.0f} are not shown here. "
-                    f"They are real — use the Explorer below to see the full range."
+                    f"They are real. Use the Explorer below to see the full range."
                 ))
             else:
                 plot_data = col_data
@@ -321,7 +322,7 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
         col1, col2 = st.columns(2)
         x_col = col1.selectbox("Category column (X axis)", cat_cols, key="bar_x")
         y_col = col2.selectbox(
-            "Value column (Y axis — leave blank to count records)",
+            "Value column (Y axis, or count records)",
             ["Count records"] + numeric_cols,
             key="bar_y"
         )
@@ -419,7 +420,7 @@ def _render_custom_explorer(df: pd.DataFrame, col_types: dict):
                 n_dropped = n_before - len(plot_df)
                 if n_dropped:
                     st.caption(
-                        f"{n_dropped:,} value(s) of zero or below are hidden, "
+                        f"{plural(n_dropped, 'value')} of zero or below are hidden, "
                         f"because a log scale cannot show them."
                     )
 

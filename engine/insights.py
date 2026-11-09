@@ -454,7 +454,7 @@ def _insight_segment(
 
     # Limit to the 4 most informative categorical columns
     # to avoid overwhelming the Discover tab with too many charts
-    for cat_col in cat_cols[:4]:
+    for position, cat_col in enumerate(cat_cols[:4]):
 
         # Count how many records are in each category
         value_counts = df[cat_col].value_counts()
@@ -476,8 +476,8 @@ def _insight_segment(
         # Write a headline based on how dominant the top category is
         if top_pct >= 75:
             headline = (
-                f"'{top_category}' dominates — it accounts for "
-                f"{top_pct:.0f}% of all {cat_col} records."
+                f"'{top_category}' makes up most of {cat_col}: "
+                f"{top_pct:.0f}% of all records."
             )
         elif top_pct >= 50:
             headline = (
@@ -485,10 +485,19 @@ def _insight_segment(
                 f"making up {top_pct:.0f}% of all records."
             )
         else:
-            headline = (
-                f"'{top_category}' is the leading {cat_col} "
-                f"({top_pct:.0f}%), but no single category dominates."
-            )
+            # No clear winner. The same sentence under every chart read like
+            # a robot wrote it, so the wording rotates from chart to chart.
+            even_split_lines = [
+                f"'{top_category}' is the most common {cat_col} at {top_pct:.0f}%, "
+                f"and the rest are spread out.",
+                f"{cat_col} is fairly evenly split. '{top_category}' is the "
+                f"largest group at {top_pct:.0f}%.",
+                f"'{top_category}' leads {cat_col} with {top_pct:.0f}% of records, "
+                f"with the others close behind.",
+                f"No {cat_col} value stands far above the rest. "
+                f"'{top_category}' is the top one at {top_pct:.0f}%.",
+            ]
+            headline = even_split_lines[position % len(even_split_lines)]
 
         # Add a comparison detail if there's a big gap between top and bottom
         ratio = top_count / bottom_count if bottom_count > 0 else 0
@@ -615,8 +624,8 @@ def _insight_financial(
                 )
         elif mostly_zero:
             headline = (
-                f"{zero_pct:.0f}% of {fin_col} values are \\$0 — "
-                f"meaning most records resulted in no payout."
+                f"{zero_pct:.0f}% of {fin_col} values are \\$0, "
+                f"so most records had no payout."
             )
             detail = (
                 f"Among records with a non-zero amount, "
@@ -627,7 +636,7 @@ def _insight_financial(
             headline = (
                 f"The total {fin_col} across all records is "
                 f"{_format_value(total, fin_col)}. "
-                f"Most values are modest — the typical record is "
+                f"Most values are modest. The typical record is "
                 f"{_format_value(median, fin_col)}."
             )
             detail = (
@@ -722,7 +731,7 @@ def _insight_outcome(
     # Write the headline with appropriate framing
     if is_negative and top_pct > 50:
         headline = (
-            f"{top_pct:.0f}% of records result in '{top_outcome}' — "
+            f"{top_pct:.0f}% of records end in '{top_outcome}', "
             f"the most common outcome by far."
         )
         # Check if there's a positive counterpart (approval, settle)

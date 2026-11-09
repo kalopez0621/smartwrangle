@@ -34,6 +34,9 @@ also sits in the sidebar, so people can sign in BEFORE uploading.
 
 import streamlit as st
 
+# Keeps the file and cleaning steps through the Google sign-in round trip
+from utils.carryover import give_browser_a_ticket, save_and_sign_in
+
 # ── Settings the [auth] section must contain ─────────────────────
 # If any of these is missing, sign-in cannot work, so the app treats
 # login as "not set up" instead of crashing.
@@ -121,15 +124,19 @@ def render_sidebar_account():
         )
         st.caption("Signing out reloads the page and clears the uploaded file.")
     else:
+        # Save this visit's ticket in the browser, so the file and cleaning
+        # steps can be put back after Google sends the person back.
+        give_browser_a_ticket()
+        # save_and_sign_in sets the work aside, then starts st.login()
         st.button(
             "Sign in with Google",
             key="auth_sidebar_login",
-            on_click=st.login,
+            on_click=save_and_sign_in,
             width="stretch",
         )
         st.caption(
-            "Only needed for the AI Analyst. Sign in before uploading, "
-            "because signing in reloads the page."
+            "Only needed for the AI Analyst. Your file and cleaning steps "
+            "stay when you sign in."
         )
 
     st.markdown("---")
@@ -160,12 +167,10 @@ def require_login_for_ai() -> bool:
         st.markdown("### :material/auto_awesome: AI Analyst")
         st.info(
             "**Sign in with Google to use the AI Analyst.**\n\n"
-            "Signing in reloads the page, so you will need to upload your "
-            "file again afterward. Tip: next time, use the sign-in button in "
-            "the sidebar before uploading.\n\n"
+            "Your file and cleaning steps will still be here after you sign in.\n\n"
             "The other three tabs work without signing in."
         )
-        st.button("Sign in with Google", key="auth_tab_login", on_click=st.login)
+        st.button("Sign in with Google", key="auth_tab_login", on_click=save_and_sign_in)
         return False
 
     return True

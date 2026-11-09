@@ -38,6 +38,8 @@ import io
 import warnings
 from pathlib import Path
 
+from utils.wording import plural          # "1 value" / "3 values"
+
 import numpy as np
 import pandas as pd
 
@@ -212,7 +214,7 @@ def _chart_histogram(insight: dict, df: pd.DataFrame):
     if p99 > 0 and top > p99 * 10:
         shown = values[values <= p99]
         note = (f"Chart shows {len(shown):,} of {len(values):,} values. "
-                f"{len(values) - len(shown):,} value(s) above {p99:,.0f} are left out "
+                f"{plural(len(values) - len(shown), 'value')} above {p99:,.0f} are left out "
                 f"so the rest can be seen. They are still in the data.")
         values = shown
 
@@ -442,11 +444,11 @@ def build_pdf_report(
         n_ph = sum(p["count"] for p in placeholders)
         shown = ", ".join(f"'{p}'" for p in sorted({p["shown_as"] for p in placeholders})[:4])
         findings.append(("warning",
-                         f"{n_ph:,} placeholder value(s) such as {shown} may stand for "
+                         f"{plural(n_ph, 'placeholder value')} such as {shown} may stand for "
                          f"missing data but are not counted as missing."))
     for col, (n_bad, examples) in (date_warnings or {}).items():
         findings.append(("warning",
-                         f"{n_bad:,} value(s) in '{col}' could not be read as dates when "
+                         f"{plural(n_bad, 'value')} in '{col}' could not be read as dates when "
                          f"the file was uploaded (for example: "
                          f"{', '.join(repr(e) for e in examples)})."))
 

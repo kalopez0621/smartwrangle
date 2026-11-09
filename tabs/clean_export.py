@@ -64,6 +64,7 @@ from engine.quality  import score_dataset
 from utils.sanitizer import sanitize_for_display
 from utils.exporter  import df_to_csv_bytes, build_summary_report, report_to_bytes, get_export_filename
 from utils.pdf_report import build_pdf_report
+from utils.wording   import plural          # "1 value" / "3 values"
 
 
 def _show_undo_bar():
@@ -224,7 +225,7 @@ def _render_suggested_actions(df: pd.DataFrame, col_types: dict):
         )
         return
 
-    st.markdown(f"**{len(suggestions)} suggestion(s) found:**")
+    st.markdown(f"**{plural(len(suggestions), 'suggestion')} found:**")
 
     # Let the button text wrap onto more lines instead of being cut off
     # with "...". The CSS only targets buttons inside the container below
@@ -329,7 +330,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
         else:
             # ── Summary line ───────────────────────────────────────────────────
             st.warning(
-                f"{n_dups:,} duplicate row(s) found out of {len(df):,} total rows "
+                f"{plural(n_dups, 'duplicate row')} found out of {len(df):,} total rows "
                 f"({n_dups / len(df) * 100:.1f}%)."
             )
 
@@ -362,11 +363,11 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             showing_all = len(dup_preview) <= MAX_PREVIEW
             preview_df  = dup_preview.head(MAX_PREVIEW)
 
-            st.markdown("**Preview — identical rows are grouped together:**")
+            st.markdown("**Preview: identical rows are grouped together**")
             st.caption(
                 f"Showing {len(preview_df):,} of {len(dup_preview):,} rows "
                 f"involved in duplicates. "
-                f"{'All duplicates shown.' if showing_all else f'First {MAX_PREVIEW} shown — remove to see the rest.'}"
+                f"{'All duplicates shown.' if showing_all else f'First {MAX_PREVIEW} shown. Remove them to see the rest.'}"
             )
 
             # Display the preview table
@@ -376,14 +377,14 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
             st.markdown(
                 "_The rows above are grouped in pairs (or larger groups). "
                 "Each group contains identical records. "
-                "The first occurrence in each group will be **kept** — "
-                "all others will be **removed**._"
+                "The first row in each group will be **kept**, and "
+                "the others will be **removed**._"
             )
 
             # ── Remove button ──────────────────────────────────────────────────
             st.markdown("---")
             if st.button(
-                f"Remove {n_dups:,} duplicate row(s)",
+                f"Remove {plural(n_dups, 'duplicate row')}",
                 key="clean_dups",
                 type="primary"
             ):
@@ -431,7 +432,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                     "\"Unknown\")."
                 )
             n_cells = sum(by_pair[pair]["count"] for pair in picked)
-            if st.button(f"Mark {n_cells:,} value(s) as blank", key="clean_ph",
+            if st.button(f"Mark {plural(n_cells, 'value')} as blank", key="clean_ph",
                          disabled=not picked):
                 new_df, msg = blank_placeholders(df, list(picked))
                 _apply_action(new_df, msg)
@@ -440,7 +441,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
     with st.expander("Fill Missing Values", icon=":material/format_color_fill:"):
         st.caption(
             "Replace empty cells with an estimated value. "
-            "For numbers: use median (middle value) — it's less affected by extremes. "
+            "For numbers, use the median (middle value), since extreme values affect it less. "
             "For categories: use the most common value."
         )
         cols_with_missing = [c for c in all_cols if df[c].isnull().sum() > 0]
@@ -466,42 +467,46 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                     f"Use **mode** (fills with the most common date) or "
                     f"**remove the affected rows** instead."
                 )
-                strategy = st.selectbox(
+                # Each choice is a short key the code uses, shown with a
+                # plain label through format_func.
+                date_labels = {
+                    "mode": "Most common date (recommended)",
+                    "drop_rows": "Remove rows with missing dates",
+                }
+                strategy_key = st.selectbox(
                     "Fill method",
-                    ["mode — most common date (recommended)",
-                     "drop — remove rows with missing dates"],
-                    key="fm_strategy"
+                    list(date_labels),
+                    format_func=lambda k: date_labels[k],
+                    key="fm_strategy_date"
                 )
-                strategy_key = "mode" if strategy.startswith("mode") else "drop_rows"
                 const_val = None
             else:
                 # Median and mean only make sense for number columns.
                 # Offering them for a text column crashed the app, so text
                 # columns only get mode (most common value) and constant.
+                # Each choice is a short key the code uses, shown with a
+                # plain label through format_func.
+                fill_labels = {
+                    "median":   "Median: the middle value (best for numbers with outliers)",
+                    "mean":     "Mean: the average value",
+                    "mode":     "Mode: the most common value (best for categories)",
+                    "constant": "A value you choose",
+                }
                 if pd.api.types.is_numeric_dtype(df[col_fm]):
-                    fill_options = [
-                        "median — middle value (best for numbers with outliers)",
-                        "mean — average value",
-                        "mode — most common value (best for categories)",
-                        "constant — a value you choose",
-                    ]
+                    fill_options = ["median", "mean", "mode", "constant"]
                 else:
-                    fill_options = [
-                        "mode — most common value (best for categories)",
-                        "constant — a value you choose",
-                    ]
+                    fill_options = ["mode", "constant"]
                     st.caption(
                         "This is a text column, so median and mean are not offered. "
                         "If it holds numbers stored as text, use "
-                        "**Convert Currency to Numeric** first."
+                        "**Convert Text or Currency to Numbers** first."
                     )
-                strategy = st.selectbox(
+                strategy_key = st.selectbox(
                     "Fill method",
                     fill_options,
+                    format_func=lambda k: fill_labels[k],
                     key="fm_strategy"
                 )
-                # Extract just the strategy keyword before the " —" description
-                strategy_key = strategy.split(" —")[0].strip()
 
                 if strategy_key == "constant":
                     const_val = st.text_input("Fill value", "0", key="fm_const")
@@ -579,19 +584,22 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
     # ── Standardize text case ──────────────────────────────────────────────────
     with st.expander("Standardize Text Capitalization", icon=":material/text_fields:"):
         st.caption(
-            "Make text consistent — e.g. 'american airlines', "
+            "Make text consistent. For example, 'american airlines', "
             "'AMERICAN AIRLINES', and 'American Airlines' all become the same."
         )
         if not string_cols:
             st.info("No text columns found.")
         else:
             col_tc  = st.selectbox("Column", string_cols, key="tc_col")
-            case_tc = st.selectbox(
+            # Short keys for the code, plain labels on screen
+            case_labels = {"title": "Title Case", "lower": "all lowercase",
+                           "upper": "ALL UPPERCASE"}
+            case_key = st.selectbox(
                 "Format",
-                ["title — Title Case", "lower — all lowercase", "upper — ALL UPPERCASE"],
+                list(case_labels),
+                format_func=lambda k: case_labels[k],
                 key="tc_case"
             )
-            case_key = case_tc.split(" —")[0].strip()
             if st.button("Standardize capitalization", key="clean_tc"):
                 new_df, msg = standardize_text_case(df, col_tc, case_key)
                 _apply_action(new_df, msg)
@@ -656,7 +664,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                     f"(for example: {examples})."
                 )
                 can_convert = st.checkbox(
-                    f"I understand {p['n_lost']:,} value(s) will become blank",
+                    f"I understand {plural(p['n_lost'], 'value')} will become blank",
                     key="cc_confirm",
                 )
             else:
@@ -707,7 +715,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                 st.warning(p["order_hint"].replace("$", "\\$"))
             elif p["n_ambiguous"]:
                 st.info(
-                    f"{p['n_ambiguous']:,} value(s) give a different date depending on "
+                    f"{plural(p['n_ambiguous'], 'value')} give a different date depending on "
                     f"the order (like 03/05/2024). Make sure the choice above matches "
                     f"how this file writes dates."
                 )
@@ -731,7 +739,7 @@ def _render_cleaning_tools(df: pd.DataFrame, col_types: dict):
                     f"(for example: {lost})."
                 )
                 can_convert_dt = st.checkbox(
-                    f"I understand {p['n_lost']:,} value(s) will become blank",
+                    f"I understand {plural(p['n_lost'], 'value')} will become blank",
                     key="dt_confirm",
                 )
             else:
@@ -810,7 +818,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
         st.caption(
             "When a column has a few very large values (like claim amounts in the millions), "
             "charts and models get distorted. Log scale compresses the range so everything "
-            "is more readable. A new column is added — your original is preserved."
+            "is more readable. A new column is added, and your original stays as it is."
         )
         if not numeric_cols:
             st.info("No numeric columns found.")
@@ -853,7 +861,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
     # ── One-hot encode ─────────────────────────────────────────────────────────
     with st.expander("Convert Categories to Yes/No Columns (One-Hot Encode)", icon=":material/toggle_on:"):
         st.caption(
-            "Turns a category column into multiple 0/1 columns — one per category. "
+            "Turns a category column into several 0/1 columns, one per category. "
             "Required for most machine learning models, which can't use text directly. "
             "Example: 'Claim Type' becomes separate Yes/No columns for each claim type."
         )
@@ -864,7 +872,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
             n_unique = df[col_ohe].nunique()
             if n_unique > 30:
                 st.warning(
-                    f"'{col_ohe}' has {n_unique} categories — this would add "
+                    f"'{col_ohe}' has {n_unique} categories, so this would add "
                     f"{n_unique} new columns. Consider dropping this column instead."
                 )
             if st.button("Encode categories", key="transform_ohe"):
@@ -875,7 +883,7 @@ def _render_transformation_tools(df: pd.DataFrame, col_types: dict):
     with st.expander("Extract Year or Month From a Date", icon=":material/event:"):
         st.caption(
             "Pull out just the year or month from a date column as a new number column. "
-            "Useful for modeling — machine learning models can't use raw dates, "
+            "Useful for modeling. Machine learning models can't use raw dates, "
             "but they can use the year (2005, 2006...) as a numeric value."
         )
         if not date_cols:
@@ -938,7 +946,7 @@ def render_clean_export_tab():
     st.markdown("### :material/tune: Preparation for Analysis")
     st.caption(
         "These tools change the values in your columns to prepare them "
-        "for charts and models. They always create a new column — "
+        "for charts and models. They always create a new column, so "
         "your original column is never overwritten."
     )
     _render_transformation_tools(df, col_types)
@@ -953,7 +961,7 @@ def render_clean_export_tab():
     if not cleaning_log:
         st.caption("No actions taken yet. Your data is in its original state.")
     else:
-        st.caption(f"{len(cleaning_log)} action(s) completed:")
+        st.caption(f"{plural(len(cleaning_log), 'action')} completed:")
         for i, action in enumerate(cleaning_log, 1):
             st.markdown(f"  {i}. {action}")
 
@@ -971,11 +979,11 @@ def render_clean_export_tab():
     if missing_remaining > 0:
         st.warning(
             f"Your dataset still has {missing_remaining:,} missing values. "
-            f"You may want to fix these before exporting — "
-            f"use the Suggested Actions or Cleaning Tools above."
+            f"You may want to fix these before exporting. "
+            f"Use the Suggested Actions or Cleaning Tools above."
         )
     else:
-        st.success("No missing values — your data is ready to export.",
+        st.success("No missing values. Your data is ready to export.",
                    icon=":material/check_circle:")
 
     # ── Two download buttons side by side ─────────────────────────────────────
@@ -983,7 +991,7 @@ def render_clean_export_tab():
 
     with col_csv:
         st.markdown("**Cleaned Dataset**")
-        st.caption("The dataset as it currently looks — all your changes included.")
+        st.caption("The dataset as it looks now, with all your changes included.")
 
         csv_filename = get_export_filename("smartwrangle_data", "csv")
         csv_bytes    = df_to_csv_bytes(df)

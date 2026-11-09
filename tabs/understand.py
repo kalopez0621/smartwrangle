@@ -44,6 +44,7 @@ from engine.cleaner  import find_placeholders
 
 # Utility — sanitize before displaying any DataFrame
 from utils.sanitizer import sanitize_for_display
+from utils.wording   import plural          # "1 value" / "3 values"
 
 
 def render_understand_tab():
@@ -234,7 +235,7 @@ def render_understand_tab():
 
         # Build the column list as a comma-separated string
         col_list = ", ".join(f"**{c}**" for c in cols)
-        st.markdown(f"{icon} **{type_label}** — {col_list}")
+        st.markdown(f"{icon} **{type_label}:** {col_list}")
 
     st.markdown("---")
 
@@ -273,9 +274,9 @@ def render_understand_tab():
         shown  = sorted({p["shown_as"] for p in placeholders})[:4]
         st.markdown(
             f'<div class="finding-warning">'
-            f"{n_ph:,} placeholder value(s) such as "
+            f"{plural(n_ph, 'placeholder value')} such as "
             f"{', '.join(repr(html.escape(s)) for s in shown)} were found in "
-            f"{n_cols} column(s). They may stand for missing data but are not counted "
+            f"{plural(n_cols, 'column')}. They may stand for missing data but are not counted "
             f"as missing yet. Use <strong>Mark Placeholder Values as Blank</strong> "
             f"in the Clean &amp; Export tab to review them."
             f"</div>",
@@ -290,7 +291,7 @@ def render_understand_tab():
         example_text = ", ".join(f"'{html.escape(e)}'" for e in examples)
         st.markdown(
             f'<div class="finding-warning">'
-            f"{n_bad:,} value(s) in '{html.escape(col)}' could not be read as dates "
+            f"{plural(n_bad, 'value')} in '{html.escape(col)}' could not be read as dates "
             f"and are now blank (for example: {example_text}). "
             f"The original file is unchanged. Use the Clean & Export tab to fill "
             f"or remove these rows."
@@ -304,7 +305,7 @@ def render_understand_tab():
     recommendations = generate_column_recommendations(df, col_types)
 
     if recommendations:
-        st.markdown("### Intelligent Recommendations")
+        st.markdown("### Suggested Fixes")
         st.caption(
             "SmartWrangle compared detected column types with value patterns "
             "to suggest improvements before analysis."
@@ -351,7 +352,7 @@ def render_understand_tab():
     # ── SECTION 6: Advanced Details (collapsed by default) ────────────────────
     # st.expander() creates a collapsible section
     # expanded=False means it starts closed — won't overwhelm beginners
-    with st.expander("Advanced Details — Numeric Column Analysis",
+    with st.expander("Advanced Details: Number Columns",
                      icon=":material/settings:", expanded=False):
         st.caption(
             "This section shows statistics for your numeric columns. "

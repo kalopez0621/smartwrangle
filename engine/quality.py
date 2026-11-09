@@ -47,6 +47,7 @@ How to use this file
 # numpy   : math and statistics functions used for skewness and outlier detection
 import pandas as pd
 import numpy as np
+from utils.wording import plural          # "1 value" / "3 values"
 
 
 # ── Score thresholds ───────────────────────────────────────────────────────────
@@ -501,7 +502,7 @@ def get_quality_report(result: dict) -> list:
         # No missing values — this is good news
         findings.append({
             "level":   "good",
-            "message": "No missing values — your data is complete."
+            "message": "No missing values. Your data is complete."
         })
     else:
         # There are missing values — explain how bad it is
@@ -516,8 +517,8 @@ def get_quality_report(result: dict) -> list:
         findings.append({
             "level": level,
             "message": (
-                f"{n:,} missing values found across "
-                f"{len(missing['cols_affected'])} column(s). "
+                f"{plural(n, 'missing value')} found across "
+                f"{plural(len(missing['cols_affected']), 'column')}. "
                 f"The most affected column is '{col}' "
                 f"({col_pct}% empty). "
                 f"Use the Clean tab to fix this."
@@ -571,7 +572,7 @@ def get_quality_report(result: dict) -> list:
             findings.append({
                 "level": "warning",
                 "message": (
-                    f"'{col}' contains extreme values — the largest value "
+                    f"'{col}' has some extreme values. The largest "
                     f"({detail['max_value']:,.0f}) is far above the typical range. "
                     f"Charts will automatically adjust to show the data clearly."
                 )

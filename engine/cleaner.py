@@ -73,6 +73,7 @@ import warnings
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from utils.wording import plural          # "1 value" / "3 values"
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -147,7 +148,7 @@ def undo_last_action(version_history: list) -> tuple:
     """
     # Check if there is anything to undo
     if not version_history:
-        return None, version_history, "Nothing to undo — this is the original dataset."
+        return None, version_history, "Nothing to undo. This is the original dataset."
 
     # Remove and return the last snapshot from the history
     # .pop() removes the last item and returns it
@@ -221,7 +222,7 @@ def remove_duplicates(df: pd.DataFrame) -> tuple:
 
     # If there are no duplicates, tell the user and return the data unchanged
     if n_duplicates == 0:
-        return df.copy(), "No duplicate rows found — nothing to remove."
+        return df.copy(), "No duplicate rows found, so nothing was removed."
 
     # drop_duplicates() removes all rows that are copies of an earlier row.
     # keep='first' means we keep the first occurrence and remove the copies.
@@ -232,7 +233,7 @@ def remove_duplicates(df: pd.DataFrame) -> tuple:
     rows_removed = len(df) - len(new_df)
 
     log_message = (
-        f"Removed {rows_removed:,} duplicate row(s). "
+        f"Removed {plural(rows_removed, 'duplicate row')}. "
         f"Dataset now has {len(new_df):,} rows."
     )
 
@@ -258,7 +259,7 @@ def drop_column(df: pd.DataFrame, column_name: str) -> tuple:
     """
     # Check that the column actually exists before trying to remove it
     if column_name not in df.columns:
-        return df.copy(), f"Column '{column_name}' not found — nothing was changed."
+        return df.copy(), f"Column '{column_name}' was not found, so nothing was changed."
 
     # Drop the column — axis=1 means "remove a column" (axis=0 means "remove a row")
     new_df = df.drop(columns=[column_name])
@@ -317,14 +318,14 @@ def fill_missing(
     """
     # Check that the column exists
     if column_name not in df.columns:
-        return df.copy(), f"Column '{column_name}' not found — nothing was changed."
+        return df.copy(), f"Column '{column_name}' was not found, so nothing was changed."
 
     # Count missing values before filling
     n_missing = int(df[column_name].isnull().sum())
 
     # If there are no missing values, nothing to do
     if n_missing == 0:
-        return df.copy(), f"'{column_name}' has no missing values — nothing to fill."
+        return df.copy(), f"'{column_name}' has no empty cells, so there is nothing to fill."
 
     # Safety check: mean and median need numbers. On a text column they
     # raise an error, so return a friendly message instead of crashing.
@@ -371,7 +372,7 @@ def fill_missing(
     new_df[column_name] = new_df[column_name].fillna(fill_value)
 
     log_message = (
-        f"Filled {n_missing:,} missing value(s) in '{column_name}' "
+        f"Filled {plural(n_missing, 'empty cell')} in '{column_name}' "
         f"with {strategy_desc}."
     )
 
@@ -427,7 +428,7 @@ def drop_missing_rows(df: pd.DataFrame, column_name: str = None) -> tuple:
         return df.copy(), f"No rows with missing values found {scope_desc}."
 
     log_message = (
-        f"Removed {rows_removed:,} row(s) with missing values {scope_desc}. "
+        f"Removed {plural(rows_removed, 'row')} with missing values {scope_desc}. "
         f"Dataset now has {len(new_df):,} rows."
     )
 
@@ -687,8 +688,8 @@ def blank_placeholders(df: pd.DataFrame, selections: list) -> tuple:
         return df.copy(), "No matching placeholder values were found, so nothing was changed."
 
     return new_df, (
-        f"Marked {total:,} placeholder value(s) as blank in "
-        f"{len(columns_changed)} column(s). They now count as missing values."
+        f"Marked {plural(total, 'placeholder value')} as blank in "
+        f"{plural(len(columns_changed), 'column')}. They now count as missing values."
     )
 
 
@@ -772,7 +773,7 @@ def convert_to_numeric(df: pd.DataFrame, column_name: str) -> tuple:
     log_message = f"Converted '{column_name}' to numbers ({preview['n_ok']:,} values)."
     if preview["n_lost"]:
         log_message += (
-            f" {preview['n_lost']:,} value(s) could not be read and are now blank."
+            f" {plural(preview['n_lost'], 'value')} could not be read and are now blank."
         )
     return new_df, log_message
 
@@ -911,11 +912,11 @@ def _order_hint(series: pd.Series, order: str):
 
     if order == "month_first" and day_first_only and not month_first_only:
         example = series[(first > 12) & (second <= 12)].astype(str).iloc[0].strip()
-        return (f"{day_first_only:,} value(s) like '{example}' only make sense with "
+        return (f"{plural(day_first_only, 'value')} like '{example}' only make sense with "
                 f"the day first. This file probably writes the day first.")
     if order == "day_first" and month_first_only and not day_first_only:
         example = series[(second > 12) & (first <= 12)].astype(str).iloc[0].strip()
-        return (f"{month_first_only:,} value(s) like '{example}' only make sense with "
+        return (f"{plural(month_first_only, 'value')} like '{example}' only make sense with "
                 f"the month first. This file probably writes the month first.")
     return None
 
@@ -954,7 +955,7 @@ def convert_to_dates(df: pd.DataFrame, column_name: str,
     )
     if preview["n_lost"]:
         log_message += (
-            f" {preview['n_lost']:,} value(s) could not be read and are now blank."
+            f" {plural(preview['n_lost'], 'value')} could not be read and are now blank."
         )
     return new_df, log_message
 
@@ -1080,7 +1081,7 @@ def extract_number(df: pd.DataFrame, column_name: str,
         f"({preview['n_found']:,} values, method: {method})."
     )
     if preview["n_none"]:
-        log_message += f" {preview['n_none']:,} value(s) had no number and are blank."
+        log_message += f" {plural(preview['n_none'], 'value')} had no number and are now blank."
     return new_df, log_message
 
 
@@ -1135,8 +1136,8 @@ def log_transform(df: pd.DataFrame, column_name: str) -> tuple:
     # Check that the column is numeric
     if not pd.api.types.is_numeric_dtype(df[column_name]):
         return df.copy(), (
-            f"'{column_name}' is not a numeric column — "
-            f"log transform only works on numbers."
+            f"'{column_name}' is not a number column. "
+            f"Log scale only works on numbers."
         )
 
     # Check for negative values (log of a negative number is undefined)
@@ -1202,8 +1203,8 @@ def standard_scale(df: pd.DataFrame, column_name: str) -> tuple:
 
     if not pd.api.types.is_numeric_dtype(df[column_name]):
         return df.copy(), (
-            f"'{column_name}' is not a numeric column — "
-            f"scaling only works on numbers."
+            f"'{column_name}' is not a number column. "
+            f"Scaling only works on numbers."
         )
 
     new_df = df.copy()
@@ -1341,10 +1342,9 @@ def one_hot_encode(df: pd.DataFrame, column_name: str) -> tuple:
     n_unique = df[column_name].nunique()
     if n_unique > 30:
         return df.copy(), (
-            f"'{column_name}' has {n_unique} unique values — "
-            f"one-hot encoding would add {n_unique} new columns, "
-            f"which is too many. Consider dropping this column instead, "
-            f"or using it only for grouping in charts."
+            f"'{column_name}' has {n_unique} different values, so this would "
+            f"add {n_unique} new columns. That is too many. Remove the column "
+            f"instead, or use it only to group charts."
         )
 
     new_df = df.copy()
@@ -1489,7 +1489,7 @@ def get_cleaning_suggestions(df: pd.DataFrame, col_types: dict) -> list:
             "priority":  1,
             "issue": (
                 f"{n_ph:,} placeholder values like {', '.join(repr(w) for w in words)} "
-                f"in {n_cols} column(s) are hiding missing data."
+                f"in {plural(n_cols, 'column')} are hiding missing data."
             ),
             "action":    "Mark placeholder values as blank",
             "operation": "blank_placeholders",
@@ -1576,8 +1576,8 @@ def get_cleaning_suggestions(df: pd.DataFrame, col_types: dict) -> list:
             suggestions.append({
                 "priority":  3,
                 "issue": (
-                    f"'{col}' has a very uneven value distribution — "
-                    f"a few extreme values are much larger than the rest."
+                    f"'{col}' is very uneven: a few values are much larger "
+                    f"than the rest."
                 ),
                 "action":    f"Apply log scale to '{col}' to compress extreme values",
                 "operation": "log_transform",
