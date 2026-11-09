@@ -14,6 +14,8 @@ prompt from everything the app has already computed:
     - Quality score and grade
     - Column type inventory (col_types dict)
     - Top findings from the quality engine
+    - The person's chosen explanation level (Beginner, Some
+      experience, or Data pro)
     - Conversation history (so follow-up questions work)
 
 This keeps API costs low, protects data privacy, and produces
@@ -30,7 +32,10 @@ import anthropic
 from utils.auth import require_login_for_ai, get_user_email
 
 # Monthly question limits (Version 2, Stage 2)
-from utils.usage import check_allowance, record_question, next_reset_label, UsageUnavailable
+from utils.usage import check_allowance, record_question, date_label, UsageUnavailable
+
+# "How should the AI explain things?" setting (polish Part 4)
+from utils.preferences import LEVELS, get_level, save_level, level_instructions
 
 # ── Local .env file location (laptop only) ───────────────────────
 # On your laptop the API key lives in a file named .env in the
@@ -83,7 +88,8 @@ def _get_api_key():
 
 # ── Context builder ────────────────────────────────────────────────────────────
 
-def _build_system_prompt(df, col_types: dict, quality_result: dict) -> str:
+def _build_system_prompt(df, col_types: dict, quality_result: dict,
+                         level: str = "some") -> str:
     """
     Build the system prompt from dataset context already computed by the app.
 
@@ -92,6 +98,9 @@ def _build_system_prompt(df, col_types: dict, quality_result: dict) -> str:
 
     We never send raw data rows — only metadata and statistics.
     This keeps the prompt small, fast, and privacy-safe.
+
+    level is the person's explanation level ('beginner', 'some', 'pro');
+    it adds a short "how to explain" paragraph to the instructions.
     """
 
     # ── Column inventory by type ───────────────────────────────────────────────
@@ -163,6 +172,12 @@ longer, cover the most important points and offer to go deeper on the rest.
 Writing style: never use em dashes (the long dash). Use a period, comma, colon, \
 or parentheses instead. Write in plain, simple sentences.
 
+How to explain: {level_instructions(level)}
+
+App names: SmartWrangle's tabs are exactly "Understand", "Discover", \
+"Clean & Export", and "AI Analyst". When you point the user to a tab, use \
+these exact names.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DATASET CONTEXT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -219,12 +234,80 @@ def _avatar(role: str) -> str:
     return USER_AVATAR if role == "user" else AI_AVATAR
 
 
+# Invisible marker placed just above the newest question, so the page can
+# scroll straight to it after an answer arrives. scroll-margin-top leaves
+# room for Streamlit's top bar so the question is not hidden under it.
+_LATEST_ANCHOR = ('<div id="sw-latest-question" '
+                  'style="scroll-margin-top: 70px; height: 0"></div>')
+
+
 def _show_history(history):
-    """Draw every earlier question and answer in the conversation."""
-    for message in history:
+    """
+    Draw every earlier question and answer in the conversation, oldest
+    first, with an invisible marker just above the newest question.
+    """
+    # Position of the newest question (None if there are no questions yet)
+    last_question = max(
+        (i for i, m in enumerate(history) if m["role"] == "user"),
+        default=None,
+    )
+    for i, message in enumerate(history):
+        if i == last_question:
+            st.markdown(_LATEST_ANCHOR, unsafe_allow_html=True)
         role = "user" if message["role"] == "user" else "assistant"
         with st.chat_message(role, avatar=_avatar(role)):
             st.markdown(message["content"])
+            if role == "assistant" and message.get("level") in LEVELS:
+                st.caption(_level_label(message["level"]))
+
+
+def _level_label(level: str) -> str:
+    """Small note under an answer, like 'Answered for: Beginner'."""
+    return f"Answered for: {LEVELS[level]}"
+
+
+def _for_api(history):
+    """
+    The conversation in the shape the Claude API expects: only "role" and
+    "content". The app also keeps a "level" on each answer for its label,
+    and the API would reject that extra field.
+    """
+    return [{"role": m["role"], "content": m["content"]} for m in history]
+
+
+def _scroll_to_latest_question():
+    """
+    Scroll the page so the newest question sits at the top of the screen,
+    with its answer right below it. Saves scrolling down to find it.
+
+    The script jumps several times over about 2 seconds, because Streamlit
+    may still be drawing the conversation, and stops if the person scrolls.
+    """
+    st.html(
+        """<script>
+        (function () {
+            // Jump instantly (no animation). A smooth scroll can be stopped
+            // partway by the browser while Streamlit is still drawing.
+            // Re-check a few times over about 2 seconds in case the page
+            // grows or shifts, but stop as soon as the person scrolls
+            // or touches the page themselves.
+            var userMoved = false;
+            function stop() { userMoved = true; }
+            window.addEventListener('wheel', stop, {once: true, passive: true});
+            window.addEventListener('touchstart', stop, {once: true, passive: true});
+            window.addEventListener('keydown', stop, {once: true});
+
+            function jump() {
+                if (userMoved) { return; }
+                var marker = document.getElementById('sw-latest-question');
+                if (marker) { marker.scrollIntoView({behavior: 'auto', block: 'start'}); }
+            }
+            [50, 300, 700, 1200, 2000].forEach(function (ms) { setTimeout(jump, ms); });
+        })();
+        </script>""",
+        unsafe_allow_javascript=True,
+        width=1,
+    )
 
 
 def _show_allowance(allowance: dict):
@@ -251,27 +334,34 @@ def _show_allowance(allowance: dict):
     elif reason == "limit_reached":
         st.info(
             f"**You've used all {limit} free AI questions for this month.**\n\n"
-            f"Your questions reset on {next_reset_label()}. "
+            f"Your questions reset on {date_label(allowance['reset'])}. "
             "The Understand, Discover, and Clean & Export tabs stay free."
         )
     elif allowance["unlimited"]:
         st.caption("Unlimited questions on this account.")
     else:
-        _show_allowance_card(allowance["remaining"], limit)
+        _show_allowance_card(allowance["remaining"], limit, allowance["reset"])
 
 
-def _show_allowance_card(remaining: int, limit: int):
+def _show_allowance_card(remaining: int, limit: int, reset=None):
     """
     Draw the "questions left" card: a big number, a row of blocks
     (blue = left, grey = used), and the reset date underneath.
+
+    reset is the date the count goes back to the full limit. It is None
+    for someone who has not asked yet, because their monthly cycle starts
+    on the day of their first question.
 
     With more than 30 questions the blocks would get too small, so the
     card switches to one continuous bar instead. When 3 or fewer are
     left, the blue turns amber as a gentle heads-up.
     """
     used = limit - remaining
-    word = "question" if remaining == 1 else "questions"
+    # "1 of 20 free questions left" reads right, so the word follows the limit
+    word = "question" if limit == 1 else "questions"
     fill = "#d97706" if remaining <= 3 else "#2563eb"   # amber when running low
+    reset_text = (f"Resets on {date_label(reset)}" if reset
+                  else "Your monthly count starts with your first question")
 
     if limit <= 30:
         # One small block per question: left ones first, then used ones
@@ -311,9 +401,52 @@ def _show_allowance_card(remaining: int, limit: int):
             <span class="sw-q-label">of {limit} free {word} left this month</span>
         </div>
         {meter}
-        <div class="sw-q-reset">Resets {next_reset_label()}</div>
+        <div class="sw-q-reset">{reset_text}</div>
     </div>
     """, unsafe_allow_html=True)
+
+
+def _show_level_picker(user_email: str) -> str:
+    """
+    Draw the "How should the AI explain things?" choice and return the
+    level to use ('beginner', 'some', or 'pro').
+
+    The choice is saved per person in the database the moment it changes
+    and applies to the very next answer. If it was never picked, the AI
+    uses "Some experience" and a one-line hint invites the person to pick.
+    If the database is down, the AI still works with the default.
+    """
+    level, status = get_level(user_email)
+    widget_key = "explain_level_choice"
+
+    def _on_change():
+        # Runs when the person clicks a different level
+        choice = st.session_state.get(widget_key)
+        if choice:
+            saved = save_level(user_email, choice)
+            st.session_state["_explain_level_saved"] = saved
+
+    st.segmented_control(
+        "How should the AI explain things?",
+        options=list(LEVELS),
+        format_func=LEVELS.get,          # show "Beginner" instead of "beginner"
+        default=level,
+        key=widget_key,
+        on_change=_on_change,
+        help="Beginner: plain words and step-by-step help. "
+             "Some experience: a balance. Data pro: short and technical. "
+             "You can change this anytime.",
+    )
+
+    # Clicking the selected choice again un-selects it. Keep the last level.
+    choice = st.session_state.get(widget_key) or level
+
+    if status == "not_set" and "_explain_level_saved" not in st.session_state:
+        st.caption("Optional. Pick the level that fits you. "
+                   "We'll remember it the next time you sign in.")
+    elif st.session_state.get("_explain_level_saved") is False or status == "offline":
+        st.caption("Your choice applies to this visit but could not be saved just now.")
+    return choice
 
 
 # ── Main tab renderer ──────────────────────────────────────────────────────────
@@ -398,6 +531,10 @@ def render_analyst_tab():
         _show_history(st.session_state.analyst_history)
         return
 
+    # ── Explanation level (polish Part 4) ──────────────────────────────────────
+    # One optional question. The answer shapes how the AI explains things.
+    explain_level = _show_level_picker(user_email)
+
     # ── Suggested questions ────────────────────────────────────────────────────
     # These give new users a starting point and demonstrate the tab's value.
     st.markdown("**Try asking:**")
@@ -450,6 +587,10 @@ def render_analyst_tab():
     history = st.session_state.analyst_history
     _show_history(history)
 
+    # Just got a new answer? Bring the newest question into view.
+    if st.session_state.pop("_analyst_scroll_to_latest", False):
+        _scroll_to_latest_question()
+
     # ── Question input ─────────────────────────────────────────────────────────
     # Check if a suggestion was clicked — if so, prefill the input
     prefill = st.session_state.pop("analyst_prefill", "")
@@ -477,7 +618,7 @@ def render_analyst_tab():
             st.markdown(question_to_ask)
 
         # Build the system prompt from current dataset context
-        system_prompt = _build_system_prompt(df, col_types, quality_result)
+        system_prompt = _build_system_prompt(df, col_types, quality_result, explain_level)
 
         # Call the Anthropic API
         with st.chat_message("assistant", avatar=_avatar("assistant")):
@@ -492,7 +633,7 @@ def render_analyst_tab():
                         # is still about a tenth of a cent per answer.
                         max_tokens=2048,
                         system=system_prompt,
-                        messages=st.session_state.analyst_history
+                        messages=_for_api(st.session_state.analyst_history)
                     )
 
                     # Extract the text response
@@ -516,13 +657,16 @@ def render_analyst_tab():
                             "continue.*"
                         )
 
-                    # Display the answer
+                    # Display the answer, with a note of the level it was written for
                     st.markdown(answer)
+                    st.caption(_level_label(explain_level))
 
-                    # Add assistant response to history for follow-up questions
+                    # Add assistant response to history for follow-up questions.
+                    # "level" is only for the label; _for_api() leaves it out.
                     st.session_state.analyst_history.append({
                         "role": "assistant",
-                        "content": answer
+                        "content": answer,
+                        "level": explain_level,
                     })
                     answered = True
 
@@ -555,6 +699,8 @@ def render_analyst_tab():
                 # The answer was already shown; only the count failed to save.
                 st.caption("Note: your question count could not be updated just now.")
                 return
+        # After the redraw, scroll to the new question and its answer
+        st.session_state["_analyst_scroll_to_latest"] = True
         st.rerun()   # redraw so the "questions left" line is current
 
     # ── Clear conversation button ──────────────────────────────────────────────

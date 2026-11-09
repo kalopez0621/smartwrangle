@@ -94,7 +94,8 @@ No data science background is needed. Every finding and every tool is explained 
 - Suggested starter questions, follow-up questions, and a clear-conversation button
 - Uses Claude Haiku 5.5 through the Anthropic API
 - Requires a free Google sign-in (the other three tabs need no account)
-- 20 free questions per person per month, counted in a small Postgres database (Neon) and reset on the 1st
+- 20 free questions per person per month, counted in a small Postgres database (Neon). Each person's month starts on the day of their first question and renews on that date.
+- An optional "How should the AI explain things?" choice (Beginner, Some experience, Data pro), saved per person
 
 ---
 
@@ -151,7 +152,7 @@ The other three tabs work without this.
 
 1. Create a free project at [Neon](https://neon.com) and copy its connection string (Connect button; starts with `postgresql://`).
 2. Add it to `secrets.toml` under `[database]`, and set the monthly limit and any unlimited emails under `[usage]`. The example file shows the layout.
-3. The app creates its one table (`ai_usage`) by itself on first use.
+3. The app creates its two tables (`ai_usage_cycles` for question counts, `user_prefs` for the explanation level) by itself on first use.
 
 If the database can't be reached, the AI Analyst stays locked with a "try again" message, so a database problem never means unlimited AI use.
 
