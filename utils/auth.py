@@ -35,7 +35,7 @@ also sits in the sidebar, so people can sign in BEFORE uploading.
 import streamlit as st
 
 # Keeps the file and cleaning steps through the Google sign-in round trip
-from utils.carryover import give_browser_a_ticket, save_and_sign_in
+from utils.carryover import save_and_sign_in
 
 # ── Settings the [auth] section must contain ─────────────────────
 # If any of these is missing, sign-in cannot work, so the app treats
@@ -124,10 +124,8 @@ def render_sidebar_account():
         )
         st.caption("Signing out reloads the page and clears the uploaded file.")
     else:
-        # Save this visit's ticket in the browser, so the file and cleaning
-        # steps can be put back after Google sends the person back.
-        give_browser_a_ticket()
         # save_and_sign_in sets the work aside, then starts st.login()
+        # (utils/carryover.py explains how the work comes back afterward)
         st.button(
             "Sign in with Google",
             key="auth_sidebar_login",

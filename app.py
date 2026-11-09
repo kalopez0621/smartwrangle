@@ -70,9 +70,9 @@ from tabs.analyst import render_analyst_tab
 from utils.sanitizer import sanitize_column_names
 
 # Google sign-in area for the sidebar (login is only required for the AI tab)
-from utils.auth import render_sidebar_account
-# Puts the file and cleaning steps back after Google sign-in
-from utils.carryover import restore_after_sign_in
+from utils.auth import render_sidebar_account, auth_is_configured
+# Keeps the file and cleaning steps through Google sign-in
+from utils.carryover import restore_after_sign_in, add_page_script
 # The monthly free-question limit, shown on the AI Analyst landing card
 # (read from [usage] in secrets, so the card always matches the real limit)
 from utils.usage import get_monthly_limit
@@ -321,7 +321,7 @@ st.markdown("""
 # so the tab bar does not jump around on later clicks.
 if restore_after_sign_in():
     st.session_state.start_tab = ":material/auto_awesome: AI Analyst"
-    st.toast("You're signed in. Your file and cleaning steps are still here.",
+    st.toast("Welcome back. Your file and cleaning steps are still here.",
              icon=":material/check_circle:")
 
 
@@ -352,6 +352,11 @@ with st.sidebar:
     # the file and cleaning steps through that round trip.
     # Draws nothing if sign-in is not set up in secrets.
     render_sidebar_account()
+
+    # The small page script that carries the ticket through sign-in.
+    # Only needed when sign-in is set up.
+    if auth_is_configured():
+        add_page_script()
 
     # ── File uploader ──────────────────────────────────────────────────────────
     # st.file_uploader() shows a drag-and-drop zone.
