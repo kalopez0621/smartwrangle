@@ -49,6 +49,28 @@ REQUIRED_AUTH_KEYS = (
 )
 
 
+# ── Privacy note ─────────────────────────────────────────────────
+# A short, plain notice of what the app saves. Shown in the sidebar
+# and on the AI Analyst sign-in prompt. Keep it true to what the app
+# actually does; update it if the app starts saving anything new.
+CONTACT_EMAIL = "smartwrangle.help@gmail.com"
+
+PRIVACY_NOTE = (
+    "SmartWrangle is a free test project. Uploaded files are not saved "
+    "(they are only held for a few minutes while you sign in). If you sign "
+    "in for the AI Analyst, we save your email address, your question "
+    "count, and how you want the AI to explain things. The AI sees a "
+    "summary of your data, not your rows. Questions or deletion requests: "
+    f"{CONTACT_EMAIL}"
+)
+
+
+def render_privacy_note():
+    """Draw the privacy note as a small fold-out box (closed by default)."""
+    with st.expander("Privacy", icon=":material/lock:"):
+        st.caption(PRIVACY_NOTE)
+
+
 def auth_is_configured() -> bool:
     """
     Check whether Google sign-in has been set up in Streamlit secrets.
@@ -137,6 +159,9 @@ def render_sidebar_account():
             "stay when you sign in."
         )
 
+    # What the app saves, right next to the sign-in button
+    render_privacy_note()
+
     st.markdown("---")
 
 
@@ -169,6 +194,8 @@ def require_login_for_ai() -> bool:
             "The other three tabs work without signing in."
         )
         st.button("Sign in with Google", key="auth_tab_login", on_click=save_and_sign_in)
+        # Same privacy note as the sidebar, so people see it before signing in
+        st.caption(PRIVACY_NOTE)
         return False
 
     return True
