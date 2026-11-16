@@ -275,6 +275,36 @@ st.markdown("""
         color: #94a3b8 !important;
     }
 
+    /* Sidebar fold-out boxes (the Privacy note).
+       Streamlit's default colors are meant for a white page, so on the
+       dark sidebar the closed label was faint and the open header turned
+       white. These rules give the box the same dark card look as the
+       upload box, with light text in every state. */
+    [data-testid="stSidebar"] [data-testid="stExpander"] details {
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 10px;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary,
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover,
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary:focus,
+    [data-testid="stSidebar"] [data-testid="stExpander"] details[open] > summary {
+        background: transparent !important;
+        color: #e2e8f0 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary * {
+        color: #e2e8f0 !important;
+    }
+    /* The note text inside the open box */
+    [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stCaptionContainer"],
+    [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stCaptionContainer"] p {
+        color: #cbd5e1 !important;
+    }
+    /* The email link: light blue so it reads on the dark background */
+    [data-testid="stSidebar"] [data-testid="stExpander"] a {
+        color: #93c5fd !important;
+    }
+
     /* File uploader box: white background so text is always legible */
     [data-testid="stSidebar"] [data-testid="stFileUploader"] {
         background: #1e293b;
